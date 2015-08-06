@@ -1,5 +1,7 @@
-package utils;
+package utils.fileUtilities;
 
+
+import utils.ExtractMaxValue;
 
 import java.io.File;
 import java.io.IOException;
@@ -8,19 +10,20 @@ import java.io.IOException;
  * Created by Ziv_BA on 30/07/2015.
  */
 public class FileProcessor {
-    protected static boolean debug = false;
+    //path to SCWRL
+    public static final String SCWRL_PATH = "/home/zivben/SCWRL4/Scwrl4";
     /**
      * constatns from PDB format. (positions are "-1" since format starts at '1' and computers start at '0'
      */
-    protected static final int ATOM_NUM_START = 6, ATOM_NUM_END = 10, ATOM_NAME_START = 12, ATOM_NAME_END = 15,
+    public static final int ATOM_NUM_START = 6, ATOM_NUM_END = 10, ATOM_NAME_START = 12, ATOM_NAME_END = 15,
             RES_NAME_START = 17, RES_NAME_END = 19, CHAIN_ID = 21, RES_SEQ_START = 22, RES_SEQ_END = 25;
-    protected static final String FOOTER_TAGS = "HETATM|MASTER|END", ALLOWED_ATOMS = "N|CA|C|O";
-
+    public static final String FOOTER_TAGS = "HETATM|MASTER|END", ALLOWED_ATOMS = "N|CA|C|O", PDB_EXTENSION
+            = ".pdb";
     //consts
     // keep ALA as first item, as this is being called explicitly by stripAllRes method.
-    protected static final String[] aAcids = {"ALA", "ARG", "ASN", "ASP", "CYS", "GLU", "GLN", "GLY", "HIS",
+    public static final String[] aAcids = {"ALA", "ARG", "ASN", "ASP", "CYS", "GLU", "GLN", "GLY", "HIS",
             "ILE", "LEU", "LYS", "MET", "PHE", "PRO", "SER", "THR", "TRP", "TYR", "VAL"};
-
+    public static boolean debug = false;
     private File source;
     private File dest;
 

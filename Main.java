@@ -1,6 +1,6 @@
-import utils.FileProcessor;
-import utils.ProteinActions;
-import utils.SimpleProtein;
+import utils.fileUtilities.FileProcessor;
+import utils.molecularElements.ProteinActions;
+import utils.molecularElements.SimpleProtein;
 
 import java.io.File;
 import java.io.IOException;
@@ -17,7 +17,7 @@ public class Main {
 
         FileProcessor FP = new FileProcessor(new File(args[0]), true);
         try {
-            ProteinActions.stripAndAllALA(FP.getSource(), FP.getDest());
+            ProteinActions.stripAndAllALAToFile(FP.getSource(), FP.getDest());
             SimpleProtein processedProt = new SimpleProtein(FP.getDest());
 
             processedProt.createPermutations();

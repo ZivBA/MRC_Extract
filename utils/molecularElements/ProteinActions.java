@@ -1,4 +1,4 @@
-package utils;
+package utils.molecularElements;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -9,7 +9,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import static utils.FileProcessor.*;
+
+import static utils.fileUtilities.FileProcessor.*;
 
 /**
  * Created by zivben on 04/08/15.
@@ -17,17 +18,19 @@ import static utils.FileProcessor.*;
 public class ProteinActions {
 
 	/**
-	 * strips a PDB file from all residue atoms except basic backbone (Ca, C, N, O) and replaces all AA to ALA
+	 * strips a PDB file from all residue atoms except basic backbone (Ca, C, N, O) and replaces all AA to
+	 * ALA. saves to file for all to enjoy.
+	 *
 	 * @param source
 	 * @param dest
 	 * @throws IOException
 	 */
-	public static void stripAndAllALA(File source, File dest) throws IOException {
+	public static void stripAndAllALAToFile(File source, File dest) throws IOException {
 
 
 		List<String> PDBStrArr = Files.readAllLines(source.toPath(), Charset.defaultCharset());
 		Iterator<String> PDBIter = PDBStrArr.iterator();
-		Pattern acceptableNames = Pattern.compile("\\s*("+ALLOWED_ATOMS+")\\s*");
+		Pattern acceptableNames = Pattern.compile("\\s*(" + ALLOWED_ATOMS + ")\\s*");
 		Matcher matchNames = acceptableNames.matcher("");
 		FileWriter writer = new FileWriter(dest);
 		while (PDBIter.hasNext()) {
@@ -46,20 +49,32 @@ public class ProteinActions {
 		writer.close();
 	}
 
-	public static void iterateAllAcids(SimpleProtein prot, File tempFolder) throws IOException {
-		String srcName = prot.getSource().getName();
-
-
+	/**
+	 * take a protein and start iterating all over it's residues. at each position create a new file with
+	 * that residue replaced to each of the 20 AA.
+	 *
+	 * @param prot
+	 * @param inputFile
+	 * @throws IOException
+	 */
+	public static void iterateAllAcidsToFile(SimpleProtein prot, File inputFile) throws IOException {
 
 		// go over all AA in the protein
-		for (SimpleProtein.ProtChain chain : prot){
+		for (SimpleProtein.ProtChain chain : prot) {
 			for (AminoAcid aminoAcid : chain) {
 
 				// for each Amino acid, replace with every possible AA
-				for (String acid : aAcids){
+				for (String acid : aAcids) {
 					aminoAcid.substituteWith(acid);
-					prot.writePDB(new File(tempFolder.getAbsolutePath()+File.separator + srcName +
-							"_res_"+aminoAcid.getSeqNum()+"_to_"+acid));
+					String filePath = inputFile.getParent();
+					String fileName = inputFile.getName().substring(0,
+							inputFile.getName().indexOf(PDB_EXTENSION));
+
+					File fileWithNewRes = new File(filePath + File.separator + fileName +
+							"_res_" + aminoAcid.getSeqNum() + "_to_" + acid + PDB_EXTENSION);
+
+
+					prot.writePDB(fileWithNewRes);
 
 					//reset to ALA
 					aminoAcid.substituteWith("ALA");
@@ -70,7 +85,5 @@ public class ProteinActions {
 		}
 	}
 
-	public static void genSCWRLforFolder(File tempFolder) {
 
-	}
 }

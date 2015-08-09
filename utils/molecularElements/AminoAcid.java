@@ -11,6 +11,7 @@ public class AminoAcid implements Iterable<SimpleAtom>{
 	private String name;
 	private char chainID;
 	private int seqNum;
+	private double acidScore;
 
 	/**
 	 * constructor for AminoAcid object, gets a string list (such as from PDB file).
@@ -27,6 +28,10 @@ public class AminoAcid implements Iterable<SimpleAtom>{
 		chainID = atoms[0].chain;
 		seqNum = atoms[0].aAcidSequence;
 
+	}
+
+	public void setAcidScore(double acidScore) {
+		this.acidScore = acidScore;
 	}
 
 	public int getSeqNum() {
@@ -49,7 +54,7 @@ public class AminoAcid implements Iterable<SimpleAtom>{
 			int counter;
 			@Override
 			public boolean hasNext() {
-				return counter <atoms.length;
+				return counter < atoms.length;
 			}
 
 			@Override

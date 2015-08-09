@@ -31,23 +31,24 @@ public class SCWRLactions {
 			throw ex;
 		}
 
+		File targetFolder = makeFolder(tempFolder, "_SCWRL");
 		for (File fileName : fileNames) {
-			scwrlRunOnce(fileName);
+			scwrlRunOnce(fileName, targetFolder);
 		}
 
 	}
 
-	public static void scwrlRunOnce(File inputFile) throws IOException {
+	public static void scwrlRunOnce(File inputFile, File targetFolder) throws IOException {
 
 		SCWRLrunner scwrl = new SCWRLrunner(SCWRL_PATH);
 		File newScwrlFile;
 
 
 		if (debug) {
-			File targetFolder = makeFolder(inputFile, "_SCWRL");
+
 			newScwrlFile = new File(
 					targetFolder.getAbsolutePath() + File.separator + inputFile.getName().replaceFirst(
-							"[.][pdb]+$", "_SCWRL" + PDB_EXTENSION));
+							PDB_EXTENSION + "+$", "_SCWRL" + PDB_EXTENSION));
 
 		} else {
 			newScwrlFile = inputFile;

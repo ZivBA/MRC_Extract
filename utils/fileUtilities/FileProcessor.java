@@ -23,6 +23,7 @@ public class FileProcessor {
 	// keep ALA as first item, as this is being called explicitly by stripAllRes method.
 	public static final String[] aAcids = {"ALA", "ARG", "ASN", "ASP", "CYS", "GLU", "GLN", "GLY", "HIS",
 			"ILE", "LEU", "LYS", "MET", "PHE", "PRO", "SER", "THR", "TRP", "TYR", "VAL"};
+
 	public static boolean debug = false;
 	private File source;
 	private File dest;
@@ -72,18 +73,6 @@ public class FileProcessor {
 		return requestedFolder;
 	}
 
-	/**
-	 * strips all residue atoms from CBeta onwards, replace all residue names with ALA;
-	 *
-	 * @throws IOException
-	 */
-
-
-	public float[][] scoreProteinAgainstMRC(MRC_Map_New map) {
-
-
-		return null;
-	}
 
 	private void getMaxIntensityValueFromMRCFile(String arg) {
 		// create MRC object with helper class MRC_map

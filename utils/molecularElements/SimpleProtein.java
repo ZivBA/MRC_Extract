@@ -1,5 +1,6 @@
 package utils.molecularElements;
 
+import utils.fileUtilities.FileProcessor;
 import utils.scwrlIntegration.SCWRLactions;
 
 import java.io.File;
@@ -19,6 +20,7 @@ import static utils.fileUtilities.FileProcessor.*;
 public class SimpleProtein implements Iterable<SimpleProtein.ProtChain> {
 
     private File source;
+    private String fileName;
     private List<ProtChain> protChains; // list of the seperate AminoAcid chains
     private List<String> hetAtmAndFooter;   // array of the remaining HeteroAtoms + footer tags.
 
@@ -35,6 +37,8 @@ public class SimpleProtein implements Iterable<SimpleProtein.ProtChain> {
      */
     public SimpleProtein(File pdbFile) throws IOException {
         source = pdbFile;
+        fileName = pdbFile.getName().substring(0, pdbFile.getName().indexOf(PDB_EXTENSION));
+
         protChains = new ArrayList<>();
         // create a chain 2D array and the first chain list.
         List<ArrayList<String>> chains = new ArrayList<>();
@@ -74,6 +78,10 @@ public class SimpleProtein implements Iterable<SimpleProtein.ProtChain> {
 
     }
 
+    public String getFileName() {
+        return fileName;
+    }
+
     public File getSource() {
         return source;
     }
@@ -104,32 +112,17 @@ public class SimpleProtein implements Iterable<SimpleProtein.ProtChain> {
 
     public void createPermutations() throws IOException {
 
-        File tempFolder = new File(source.getParent()+File.separator+"_temp");
+        File tempFolder = FileProcessor.makeFolder(source, "_temp");
 
-        if (tempFolder.isDirectory()){
-            System.out.println("temp folder already exists at:\n" + tempFolder.getAbsolutePath());
-        } else {
-            if (tempFolder.mkdir()) {
-                System.out.println("Created temp processing folder \n"+ tempFolder.getAbsolutePath());
-            } else {
-                System.out.println("Temp Folder not created");
-            }
-        }
 
         ProteinActions.iterateAllAcidsToFile(this, tempFolder);
         SCWRLactions.genSCWRLforFolder(tempFolder);
     }
 
     public void createPermutations(File tempFolder) throws IOException {
-        if (tempFolder.isDirectory()){
-            System.out.println("temp folder already exists at:\n" + tempFolder.getAbsolutePath());
-        } else {
-            if (tempFolder.mkdir()) {
-                System.out.println("Created temp processing folder \n"+ tempFolder.getAbsolutePath());
-            } else {
-                System.out.println("Temp Folder not created");
-            }
-        }
+
+        makeFolder(tempFolder);
+
         ProteinActions.iterateAllAcidsToFile(this, tempFolder);
 
     }

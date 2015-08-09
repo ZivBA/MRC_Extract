@@ -53,11 +53,11 @@ public class ProteinActions {
 	 * take a protein and start iterating all over it's residues. at each position create a new file with
 	 * that residue replaced to each of the 20 AA.
 	 *
-	 * @param prot
-	 * @param inputFile
+	 * @param prot         input protein
+	 * @param outputFolder output folder
 	 * @throws IOException
 	 */
-	public static void iterateAllAcidsToFile(SimpleProtein prot, File inputFile) throws IOException {
+	public static void iterateAllAcidsToFile(SimpleProtein prot, File outputFolder) throws IOException {
 
 		// go over all AA in the protein
 		for (SimpleProtein.ProtChain chain : prot) {
@@ -66,13 +66,10 @@ public class ProteinActions {
 				// for each Amino acid, replace with every possible AA
 				for (String acid : aAcids) {
 					aminoAcid.substituteWith(acid);
-					String filePath = inputFile.getParent();
-					String fileName = inputFile.getName().substring(0,
-							inputFile.getName().indexOf(PDB_EXTENSION));
-
-					File fileWithNewRes = new File(filePath + File.separator + fileName +
-							"_res_" + aminoAcid.getSeqNum() + "_to_" + acid + PDB_EXTENSION);
-
+					// write new processed file
+					File fileWithNewRes = new File(outputFolder.getAbsolutePath() + File.separator + prot
+							.getFileName() + "_res_" + aminoAcid.getSeqNum() + "_to_" + acid +
+							PDB_EXTENSION);
 
 					prot.writePDB(fileWithNewRes);
 

@@ -38,13 +38,17 @@ public class SCWRLactions {
 	}
 
 	public static void scwrlRunOnce(File inputFile) throws IOException {
-		String srcName = inputFile.getName().substring(0, inputFile.getName().indexOf(PDB_EXTENSION));
+
 		SCWRLrunner scwrl = new SCWRLrunner(SCWRL_PATH);
 		File newScwrlFile;
 
 
 		if (debug) {
-			newScwrlFile = new File(inputFile.getAbsolutePath() + "_SCWRL");
+			File targetFolder = makeFolder(inputFile, "_SCWRL");
+			newScwrlFile = new File(
+					targetFolder.getAbsolutePath() + File.separator + inputFile.getName().replaceFirst(
+							"[.][pdb]+$", "_SCWRL" + PDB_EXTENSION));
+
 		} else {
 			newScwrlFile = inputFile;
 		}

@@ -22,7 +22,11 @@ public class SCWRLactions {
 	 */
 	public static void genSCWRLforFolder(File tempFolder) throws IOException {
 
+		System.out.println("******************************************************************");
+		System.out.println("Processing SCWRL input folder: \n" + tempFolder.getAbsolutePath());
+		System.out.println("******************************************************************");
 		List<File> fileNames = new ArrayList<>();
+		long startTime = System.currentTimeMillis();
 		try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(tempFolder.toPath())) {
 			for (Path path : directoryStream) {
 				fileNames.add(path.toFile());
@@ -35,6 +39,13 @@ public class SCWRLactions {
 		for (File fileName : fileNames) {
 			scwrlRunOnce(fileName, targetFolder);
 		}
+		long stopTime = System.currentTimeMillis();
+		float elapsedTime = (stopTime - startTime) / 1000f;
+		System.out.println("******************************************************************");
+		System.out.println("Generated: " + fileNames.size() + " Files in: " + elapsedTime + " seconds");
+		System.out.println("******************************************************************");
+		System.out.println("SCWRL execution terminated!");
+
 
 	}
 
@@ -56,6 +67,7 @@ public class SCWRLactions {
 
 
 		scwrl.runScwrl(inputFile, newScwrlFile);
+
 	}
 
 

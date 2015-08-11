@@ -19,13 +19,13 @@ import static utils.fileUtilities.FileProcessor.*;
  */
 public class SimpleProtein implements Iterable<SimpleProtein.ProtChain> {
 
+	public File processingFolder;
 	private File source;
-	private File processingFolder;
 	private String fileName;
 	private int sequenceBias;
 	private List<ProtChain> protChains; // list of the seperate AminoAcid chains
 	private List<String> hetAtmAndFooter;   // array of the remaining HeteroAtoms + footer tags.
-
+	private double[][] intensityMatrix;
 
 	/**
 	 * constructor for SimpleProtein from PDB file.</br>
@@ -77,6 +77,12 @@ public class SimpleProtein implements Iterable<SimpleProtein.ProtChain> {
 
 		hetAtmAndFooter = hetAtm;
 		sequenceBias = protChains.get(0).residues.get(0).getSeqNum();
+
+
+	}
+
+	public void setIntensityMatrix(double[][] intensityMatrix) {
+		this.intensityMatrix = intensityMatrix;
 	}
 
 	public String getFileName() {
@@ -137,6 +143,9 @@ public class SimpleProtein implements Iterable<SimpleProtein.ProtChain> {
 		return processingFolder;
 	}
 
+	public void setProcessingFolder(File processingFolder) {
+		this.processingFolder = processingFolder;
+	}
 
 	@Override
 	public Iterator<ProtChain> iterator() {
@@ -151,7 +160,6 @@ public class SimpleProtein implements Iterable<SimpleProtein.ProtChain> {
 		return protLength;
 
 	}
-
 
 	/**
 	 * helper class to bulk residues together in respective chains.
@@ -187,6 +195,7 @@ public class SimpleProtein implements Iterable<SimpleProtein.ProtChain> {
 				}
 
 			}
+
 			chainID = residues.get(0).getChainID();
 
 		}

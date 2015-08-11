@@ -31,7 +31,8 @@ public class SCWRLrunner {
 
 		Process process = Runtime.getRuntime().exec(scwrlExe.getAbsolutePath() +
 				" -i " + input.getAbsolutePath() +
-				" -o " + output.getAbsolutePath());
+				" -o " + output.getAbsolutePath() +
+				" -h");
 
 		BufferedReader br = new BufferedReader(new InputStreamReader(process.getInputStream()));
 
@@ -39,9 +40,7 @@ public class SCWRLrunner {
 		String line;
 		while ((line = br.readLine()) != null) {
 			stdOutput.add(line);
-			System.out.println(line);
 		}
-		System.out.println("SCWRL execution terminated!");
 		return (String[]) stdOutput.toArray(new String[stdOutput.size()]);
 	}
 }

@@ -1,11 +1,14 @@
 package utils.Scoring;
 
+import utils.fileUtilities.FileProcessor;
 import utils.fileUtilities.MRC_Map_New;
 import utils.molecularElements.AminoAcid;
+import utils.molecularElements.ProteinActions;
 import utils.molecularElements.SimpleAtom;
 import utils.molecularElements.SimpleProtein;
 
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
@@ -14,19 +17,24 @@ import java.util.ArrayList;
 import java.util.InvalidPropertiesFormatException;
 import java.util.List;
 
+import static org.apache.commons.lang3.StringUtils.substringAfterLast;
+import static org.apache.commons.lang3.StringUtils.substringBetween;
+
 /**
  * Created by zivben on 09/08/15.
  */
 public class MRC_Score {
 	private MRC_Map_New myMap;
 	private SimpleProtein myProt;
-	private double[][] resultMatrix;
-	private double[][] zValueGrid;
+	private double[][] intensityValueMatrix;
+	private double[][] zValueMatrix;
+	private double[][] zValueCorrect;
+	private double[] zValuesForOriginalAcids;
 
 	public MRC_Score(MRC_Map_New myMap, SimpleProtein myProt) {
 		this.myMap = myMap;
 		this.myProt = myProt;
-		resultMatrix = new double[20][myProt.getLegnth()];
+		intensityValueMatrix = new double[20][myProt.getLegnth()];
 
 	}
 
@@ -34,16 +42,35 @@ public class MRC_Score {
 		this(new MRC_Map_New(mapPath), new SimpleProtein(new File(protPath)));
 	}
 
+	public static MRC_Score StartFromScratch(FileProcessor FP, String mrcpath) {
+
+		try {
+			ProteinActions.stripAndAllALAToFile(FP.getSource(), FP.getDest());
+			SimpleProtein processedProt = new SimpleProtein(FP.getDest());
+
+			MRC_Score scoreMap = new MRC_Score(new MRC_Map_New(mrcpath), processedProt);
+			scoreMap.scoreProtein();
+			scoreMap.calcZvalue();
+			scoreMap.dispHist();
+			return scoreMap;
+		} catch (IOException e) {
+			e.printStackTrace();
+			return null;
+		}
+
+	}
+
 	public double[][] scoreProtein() throws IOException {
 		myProt.createPermutations();
 
 		processSCWRLfolder(myProt.getProcessingFolder());
 
-		return resultMatrix;
+		return intensityValueMatrix;
 	}
 
 	private void processSCWRLfolder(File processingFolder) throws IOException {
 		SimpleProtein tempProt;
+
 
 		List<File> fileNames = new ArrayList<>();
 		try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(processingFolder.toPath())) {
@@ -57,62 +84,113 @@ public class MRC_Score {
 		for (File fileName : fileNames) {
 			tempProt = new SimpleProtein(fileName);
 			scoreSingleScwrl(tempProt);
+
 		}
 	}
 
 	private void scoreSingleScwrl(SimpleProtein tempProt) throws InvalidPropertiesFormatException {
 
+		int testResiduePosition = Integer.valueOf(substringBetween(tempProt.getFileName(), "_res_", "_"));
+		int testResidueIndex = acidToIndex(
+				substringAfterLast(tempProt.getFileName(), "_"));
+
 		for (SimpleProtein.ProtChain chain : tempProt) {
 			for (AminoAcid residue : chain) {
-				double scoreSum = 0;
-				for (SimpleAtom atom : residue) {
-					scoreSum += scoreSingleAtom(atom);
+				if (residue.getSeqNum() == testResiduePosition && acidToIndex(
+						residue.getName()) == testResidueIndex) {
+					double scoreSum = 0;
+					for (SimpleAtom atom : residue) {
+						scoreSum += scoreSingleAtom(atom);
+					}
+					// put the residue cumulative score in the respective position in the
+					// intensityValueMatrix
+					// 1st position is the residue number minus the number of first residue, normalizing the
+					// sequence number to a zero-start position. 2nd position is the index by acid name.
+					intensityValueMatrix[testResidueIndex][testResiduePosition - tempProt.getSequenceBias()]
+							= scoreSum;
 				}
-				// put the residue cumulative score in the respective position in the resultMatrix
-				// 1st position is the residue number minus the number of first residue, normalizing the
-				// sequence number to a zero-start position. 2nd position is the index by acid name.
-				resultMatrix[acidToIndex(residue.getName())][residue.getSeqNum() - tempProt.getSequenceBias()
-						] = scoreSum;
 			}
-		}
-	}
 
+		}
+
+
+	}
+	
 	private double scoreSingleAtom(SimpleAtom atom) {
 		float[] coords = atom.getAtomCoords();
 
 		atom.setAtomScore(myMap.val(coords[0], coords[1], coords[2]));
 		return atom.getAtomScore();
 	}
-	
-	
-	public void calcZvalue() {
+
+	public void calcZvalue() throws InvalidPropertiesFormatException {
 		double tempAvg[] = new double[20];
 		double tempStD[] = new double[20];
-		zValueGrid = new double[resultMatrix.length][resultMatrix[0].length];
+		zValueMatrix = new double[intensityValueMatrix.length][intensityValueMatrix[0].length];
+		zValuesForOriginalAcids = new double[intensityValueMatrix.length];
 		int counter;
-		for (int i = 0; i < resultMatrix.length; i++) {
-			for (int j = 0; j < resultMatrix[i].length; j++) {
-				tempAvg[i] += resultMatrix[i][j];
+		for (int i = 0; i < intensityValueMatrix.length; i++) {
+			for (int j = 0; j < intensityValueMatrix[i].length; j++) {
+				tempAvg[i] += intensityValueMatrix[i][j];
 			}
-			tempAvg[i] = tempAvg[i] / resultMatrix[i].length;
-			for (int j = 0; j < resultMatrix[i].length; j++) {
-				tempStD[i] += Math.pow(resultMatrix[i][j] - tempAvg[i], 2);
+			tempAvg[i] = tempAvg[i] / intensityValueMatrix[i].length;
+			for (int j = 0; j < intensityValueMatrix[i].length; j++) {
+				tempStD[i] += Math.pow(intensityValueMatrix[i][j] - tempAvg[i], 2);
 			}
-			tempStD[i] = Math.sqrt(tempStD[i] / resultMatrix[i].length);
+			tempStD[i] = Math.sqrt(tempStD[i] / intensityValueMatrix[i].length);
 		}
-		
-		for (int i = 0; i < resultMatrix.length; i++) {
-			for (int j = 0; j < resultMatrix[i].length; j++) {
-				zValueGrid[i][j] = (resultMatrix[i][j] - tempAvg[i]) / tempStD[i];
+
+		for (int i = 0; i < intensityValueMatrix.length; i++) {
+			for (int j = 0; j < intensityValueMatrix[i].length; j++) {
+				zValueMatrix[i][j] = (intensityValueMatrix[i][j] - tempAvg[i]) / tempStD[i];
 			}
 		}
-		
-		
+
+		Integer[] suspectedCorrectPositions = getOriginalPositions(myProt);
+
+		for (int i = 0; i < suspectedCorrectPositions.length; i++) {
+			zValuesForOriginalAcids[i] = zValueMatrix[suspectedCorrectPositions[i]][i];
+		}
+
 	}
 
-	public void dispHist() {
+	public void dispHist() throws IOException {
+
+		File resultCSV = new File(myProt.getSource().getAbsolutePath().substring(0, myProt.getSource()
+				.getAbsolutePath().indexOf(".pdb")) + "_resultMatrix.csv");
+		File zscoreCSV = new File(myProt.getSource().getAbsolutePath().substring(0, myProt.getSource()
+				.getAbsolutePath().indexOf(".pdb")) + "_zscore.csv");
 
 
+		writeMatrixToCSV(resultCSV, intensityValueMatrix);
+		writeMatrixToCSV(zscoreCSV, zValueMatrix);
+
+
+	}
+
+	private Integer[] getOriginalPositions(SimpleProtein myProt) throws InvalidPropertiesFormatException {
+		List<Integer> positionArray = new ArrayList<>();
+		for (SimpleProtein.ProtChain chain : myProt) {
+			for (AminoAcid acid : chain) {
+				positionArray.add(acidToIndex(acid.getName()));
+			}
+		}
+		return positionArray.toArray(new Integer[positionArray.size()]);
+	}
+
+	private void writeMatrixToCSV(File outputCSV, double[][] matrix) throws IOException {
+		FileWriter FW = new FileWriter(outputCSV);
+
+
+		for (int i = 0; i < matrix[0].length; i++) {
+			String row = "";
+			for (int j = 0; j < matrix.length; j++) {
+				row += matrix[j][i] + ", ";
+			}
+			row += "\n";
+			FW.write(row);
+		}
+		FW.close();
 	}
 
 	private int acidToIndex(String name) throws InvalidPropertiesFormatException {

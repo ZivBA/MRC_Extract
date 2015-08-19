@@ -1,6 +1,5 @@
 package utils.Scoring;
 
-import utils.fileUtilities.FileProcessor;
 import utils.fileUtilities.MRC_Map_New;
 import utils.molecularElements.AminoAcid;
 import utils.molecularElements.ProteinActions;
@@ -19,22 +18,25 @@ import java.util.List;
 
 import static org.apache.commons.lang3.StringUtils.substringAfterLast;
 import static org.apache.commons.lang3.StringUtils.substringBetween;
+import static utils.molecularElements.ProteinActions.acidToIndex;
 
 /**
  * Created by zivben on 09/08/15.
  */
 public class MRC_Score {
+	Integer[] originalPos;
 	private MRC_Map_New myMap;
 	private SimpleProtein myProt;
 	private double[][] intensityValueMatrix;
 	private double[][] zValueMatrix;
-	private double[][] zValueCorrect;
-	private double[] zValuesForOriginalAcids;
+	private double[] zValueCorrect;
+	private double[] originalAcidsScore;
 
 	public MRC_Score(MRC_Map_New myMap, SimpleProtein myProt) {
 		this.myMap = myMap;
 		this.myProt = myProt;
 		intensityValueMatrix = new double[20][myProt.getLegnth()];
+		originalAcidsScore = new double[myProt.getLegnth()];
 
 	}
 
@@ -42,35 +44,40 @@ public class MRC_Score {
 		this(new MRC_Map_New(mapPath), new SimpleProtein(new File(protPath)));
 	}
 
-	public static MRC_Score StartFromScratch(FileProcessor FP, String mrcpath) {
+	//	public static MRC_Score StartFromScratch(FileProcessor FP, String mrcpath) {
+	//
+	//		try {
+	//			ProteinActions.stripAndAllALAToFile(FP.getSource(), FP.getDest());
+	//			SimpleProtein processedProt = new SimpleProtein(FP.getDest());
+	//
+	//			MRC_Score scoreMap = new MRC_Score(new MRC_Map_New(mrcpath), processedProt);
+	//			scoreMap.scoreProtein();
+	//			scoreMap.calcZvalue();
+	//			scoreMap.dispHist();
+	//			return scoreMap;
+	//		} catch (IOException e) {
+	//			e.printStackTrace();
+	//			return null;
+	//		}
+	//
+	//	}
 
-		try {
-			ProteinActions.stripAndAllALAToFile(FP.getSource(), FP.getDest());
-			SimpleProtein processedProt = new SimpleProtein(FP.getDest());
-
-			MRC_Score scoreMap = new MRC_Score(new MRC_Map_New(mrcpath), processedProt);
-			scoreMap.scoreProtein();
-			scoreMap.calcZvalue();
-			scoreMap.dispHist();
-			return scoreMap;
-		} catch (IOException e) {
-			e.printStackTrace();
-			return null;
-		}
-
-	}
 
 	public double[][] scoreProtein() throws IOException {
-		myProt.createPermutations();
+		myProt.saveOriginalPositions();
+		originalPos = myProt.getOriginalPositions();
 
-		processSCWRLfolder(myProt.getProcessingFolder());
+		ProteinActions.stripAndAllALAToObject(myProt);
+		File scwrlOutput = ProteinActions.iterateAndScwrl(myProt);
+
+		processSCWRLfolder(scwrlOutput);
 
 		return intensityValueMatrix;
 	}
 
 	private void processSCWRLfolder(File processingFolder) throws IOException {
-		SimpleProtein tempProt;
 
+		SimpleProtein tempProt;
 
 		List<File> fileNames = new ArrayList<>();
 		try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(processingFolder.toPath())) {
@@ -90,6 +97,7 @@ public class MRC_Score {
 
 	private void scoreSingleScwrl(SimpleProtein tempProt) throws InvalidPropertiesFormatException {
 
+
 		int testResiduePosition = Integer.valueOf(substringBetween(tempProt.getFileName(), "_res_", "_"));
 		int testResidueIndex = acidToIndex(
 				substringAfterLast(tempProt.getFileName(), "_"));
@@ -98,16 +106,26 @@ public class MRC_Score {
 			for (AminoAcid residue : chain) {
 				if (residue.getSeqNum() == testResiduePosition && acidToIndex(
 						residue.getName()) == testResidueIndex) {
-					double scoreSum = 0;
+					double resSum = 0;
+					double backBoneSum = 0;
 					for (SimpleAtom atom : residue) {
-						scoreSum += scoreSingleAtom(atom);
+						if (atom.isBackbone()) {
+							backBoneSum += scoreSingleAtom(atom);
+						} else {
+							resSum += scoreSingleAtom(atom);
+						}
 					}
-					// put the residue cumulative score in the respective position in the
-					// intensityValueMatrix
-					// 1st position is the residue number minus the number of first residue, normalizing the
-					// sequence number to a zero-start position. 2nd position is the index by acid name.
-					intensityValueMatrix[testResidueIndex][testResiduePosition - tempProt.getSequenceBias()]
-							= scoreSum;
+
+					if ((int) residue.getAcidGlobalIndex() == originalPos[residue.getSeqNum() -
+							myProt.getSequenceBias()]) {
+
+						originalAcidsScore[residue.getSeqNum() - myProt.getSequenceBias()] = backBoneSum + resSum;
+					}
+					intensityValueMatrix[acidToIndex(
+							residue.getName())][residue.getSeqNum() - myProt.getSequenceBias()] =
+							backBoneSum + resSum;
+
+
 				}
 			}
 
@@ -127,8 +145,9 @@ public class MRC_Score {
 		double tempAvg[] = new double[20];
 		double tempStD[] = new double[20];
 		zValueMatrix = new double[intensityValueMatrix.length][intensityValueMatrix[0].length];
-		zValuesForOriginalAcids = new double[intensityValueMatrix.length];
-		int counter;
+		zValueCorrect = new double[myProt.getLegnth()];
+
+
 		for (int i = 0; i < intensityValueMatrix.length; i++) {
 			for (int j = 0; j < intensityValueMatrix[i].length; j++) {
 				tempAvg[i] += intensityValueMatrix[i][j];
@@ -146,10 +165,10 @@ public class MRC_Score {
 			}
 		}
 
-		Integer[] suspectedCorrectPositions = getOriginalPositions(myProt);
+		Integer[] suspectedCorrectPositions = myProt.getOriginalPositions();
 
 		for (int i = 0; i < suspectedCorrectPositions.length; i++) {
-			zValuesForOriginalAcids[i] = zValueMatrix[suspectedCorrectPositions[i]][i];
+			zValueCorrect[i] = zValueMatrix[suspectedCorrectPositions[i]][i];
 		}
 
 	}
@@ -193,50 +212,5 @@ public class MRC_Score {
 		FW.close();
 	}
 
-	private int acidToIndex(String name) throws InvalidPropertiesFormatException {
 
-		if (name.equals("ALA"))
-			return 0;
-		if (name.equals("ARG"))
-			return 1;
-		if (name.equals("ASN"))
-			return 2;
-		if (name.equals("ASP"))
-			return 3;
-		if (name.equals("CYS"))
-			return 4;
-		if (name.equals("GLU"))
-			return 5;
-		if (name.equals("GLN"))
-			return 6;
-		if (name.equals("GLY"))
-			return 7;
-		if (name.equals("HIS"))
-			return 8;
-		if (name.equals("ILE"))
-			return 9;
-		if (name.equals("LEU"))
-			return 10;
-		if (name.equals("LYS"))
-			return 11;
-		if (name.equals("MET"))
-			return 12;
-		if (name.equals("PHE"))
-			return 13;
-		if (name.equals("PRO"))
-			return 14;
-		if (name.equals("SER"))
-			return 15;
-		if (name.equals("THR"))
-			return 16;
-		if (name.equals("TRP"))
-			return 17;
-		if (name.equals("TYR"))
-			return 18;
-		if (name.equals("VAL"))
-			return 19;
-
-		else
-			throw new InvalidPropertiesFormatException("Bad AminoAcid Name");
-	}
 }

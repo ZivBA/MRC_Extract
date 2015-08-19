@@ -1,7 +1,7 @@
 import utils.Scoring.MRC_Score;
-import utils.fileUtilities.FileProcessor;
+import utils.molecularElements.SimpleProtein;
 
-import java.io.File;
+import java.io.IOException;
 
 
 public class Main {
@@ -14,25 +14,17 @@ public class Main {
     public static void main(String[] args) {
         String mrcpath = "//home//zivben//IdeaProjects//TestFilesForBBGenerator//3j06.mrc";
 
+	    SimpleProtein sourceProtein = null;
+	    try {
+		    MRC_Score myScore = new MRC_Score(mrcpath, args[0]);
+		    myScore.scoreProtein();
+		    myScore.calcZvalue();
+		    System.out.println();
 
-        FileProcessor FP = new FileProcessor(new File(args[0]), true);
-        MRC_Score scoreMap = MRC_Score.StartFromScratch(FP, mrcpath);
 
-        /*try {
-            ProteinActions.stripAndAllALAToFile(FP.getSource(), FP.getDest());
-            SimpleProtein processedProt = new SimpleProtein(FP.getDest());
-
-
-            MRC_Score scoreMap = new MRC_Score(new MRC_Map_New(mrcpath), processedProt);
-            scoreMap.scoreProtein();
-            scoreMap.calcZvalue();
-            scoreMap.dispHist();
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }*/
-
-//
+	    } catch (IOException e) {
+		    e.printStackTrace();
+	    }
 
 
     }

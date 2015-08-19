@@ -39,9 +39,9 @@ public class FileProcessor {
 		dest = new File(source.getAbsolutePath().replaceFirst("[.][pdb]+$", "_stripped" + PDB_EXTENSION));
 	}
 
-	public static File makeFolder(File source, String newFolder) throws IOException {
+	public static File makeSubFolderAt(File sourceFile, String targetSubFolder) throws IOException {
 
-		File requestedFolder = new File(source.getParent() + File.separator + newFolder);
+		File requestedFolder = new File(sourceFile.getParent() + File.separator + targetSubFolder);
 
 		if (requestedFolder.isDirectory()) {
 			System.out.println("Requested folder already exists at:\n" + requestedFolder.getAbsolutePath());

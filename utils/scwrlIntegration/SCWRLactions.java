@@ -35,7 +35,7 @@ public class SCWRLactions {
 			throw ex;
 		}
 
-		File targetFolder = makeFolder(tempFolder, "_SCWRL");
+		File targetFolder = makeSubFolderAt(tempFolder, "_SCWRL");
 		for (File fileName : fileNames) {
 			scwrlRunOnce(fileName, targetFolder);
 		}

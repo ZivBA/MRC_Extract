@@ -1,4 +1,4 @@
-package utils.fileUtilities;
+package utils.ScoreUtilities;
 
 
 import utils.ExtractMaxValue;
@@ -9,7 +9,7 @@ import java.io.IOException;
 /**
  * Created by Ziv_BA on 30/07/2015.
  */
-public class FileProcessor {
+public class ScoringGeneralHelpers {
 	//path to SCWRL
 	public static final String SCWRL_PATH = "/home/zivben/SCWRL4/Scwrl4";
 	/**
@@ -33,8 +33,8 @@ public class FileProcessor {
 	 *
 	 * @param toProcess
 	 */
-	public FileProcessor(File toProcess, boolean debug) {
-		FileProcessor.debug = debug;
+	public ScoringGeneralHelpers(File toProcess, boolean debug) {
+		ScoringGeneralHelpers.debug = debug;
 		source = toProcess;
 		dest = new File(source.getAbsolutePath().replaceFirst("[.][pdb]+$", "_stripped" + PDB_EXTENSION));
 	}

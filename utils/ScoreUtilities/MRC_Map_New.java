@@ -1,4 +1,4 @@
-package utils.fileUtilities;
+package utils.ScoreUtilities;
 
 import java.io.DataInputStream;
 import java.io.File;

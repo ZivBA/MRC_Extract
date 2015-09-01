@@ -1,6 +1,7 @@
 package utils.Scoring;
 
-import utils.fileUtilities.MRC_Map_New;
+import utils.ScoreUtilities.MRC_Map_New;
+import utils.ScoreUtilities.ScoringGeneralHelpers;
 import utils.molecularElements.AminoAcid;
 import utils.molecularElements.ProteinActions;
 import utils.molecularElements.SimpleAtom;
@@ -44,7 +45,7 @@ public class MRC_Score {
 		this(new MRC_Map_New(mapPath), new SimpleProtein(new File(protPath)));
 	}
 
-	//	public static MRC_Score StartFromScratch(FileProcessor FP, String mrcpath) {
+	//	public static MRC_Score StartFromScratch(ScoringGeneralHelpers FP, String mrcpath) {
 	//
 	//		try {
 	//			ProteinActions.stripAndAllALAToFile(FP.getSource(), FP.getDest());
@@ -53,7 +54,7 @@ public class MRC_Score {
 	//			MRC_Score scoreMap = new MRC_Score(new MRC_Map_New(mrcpath), processedProt);
 	//			scoreMap.scoreProtein();
 	//			scoreMap.calcZvalue();
-	//			scoreMap.dispHist();
+	//			scoreMap.createCSVs();
 	//			return scoreMap;
 	//		} catch (IOException e) {
 	//			e.printStackTrace();
@@ -64,10 +65,13 @@ public class MRC_Score {
 
 
 	public double[][] scoreProtein() throws IOException {
+		System.out.println("Starting protein scoring, saving original positions.");
 		myProt.saveOriginalPositions();
 		originalPos = myProt.getOriginalPositions();
 
+		System.out.println("Stripping all amino acid resiudes and setting to ALA.");
 		ProteinActions.stripAndAllALAToObject(myProt);
+		System.out.println("Iterating all acid permutations and creating SCWRL input files");
 		File scwrlOutput = ProteinActions.iterateAndScwrl(myProt);
 
 		processSCWRLfolder(scwrlOutput);
@@ -104,6 +108,7 @@ public class MRC_Score {
 
 		for (SimpleProtein.ProtChain chain : tempProt) {
 			for (AminoAcid residue : chain) {
+
 				if (residue.getSeqNum() == testResiduePosition && acidToIndex(
 						residue.getName()) == testResidueIndex) {
 					double resSum = 0;
@@ -137,11 +142,17 @@ public class MRC_Score {
 	private double scoreSingleAtom(SimpleAtom atom) {
 		float[] coords = atom.getAtomCoords();
 
-		atom.setAtomScore(myMap.val(coords[0], coords[1], coords[2]));
+		try {
+			atom.setAtomScore(myMap.val(coords[0], coords[1], coords[2]));
+		} catch (RuntimeException e) {
+			System.out.println("Warning, PDB contains coordinate value outside MRC map scope.");
+			atom.setAtomScore(0.0);
+		}
 		return atom.getAtomScore();
 	}
 
 	public void calcZvalue() throws InvalidPropertiesFormatException {
+		System.out.println("Calculating Z-Values");
 		double tempAvg[] = new double[20];
 		double tempStD[] = new double[20];
 		zValueMatrix = new double[intensityValueMatrix.length][intensityValueMatrix[0].length];
@@ -173,18 +184,70 @@ public class MRC_Score {
 
 	}
 
-	public void dispHist() throws IOException {
+	public void createCSVs() throws IOException {
 
+		System.out.println("Creating CSV Files");
 		File resultCSV = new File(myProt.getSource().getAbsolutePath().substring(0, myProt.getSource()
 				.getAbsolutePath().indexOf(".pdb")) + "_resultMatrix.csv");
 		File zscoreCSV = new File(myProt.getSource().getAbsolutePath().substring(0, myProt.getSource()
 				.getAbsolutePath().indexOf(".pdb")) + "_zscore.csv");
+		File zscoreCorrect = new File(myProt.getSource().getAbsolutePath().substring(0, myProt.getSource()
+				.getAbsolutePath().indexOf(".pdb")) + "_zscoreCorrect.csv");
 
+		File tempCSVfolder = ScoringGeneralHelpers.makeFolder(new File(myProt.getSource().getParent() + File
+				.separator + "tempCSVs"));
 
 		writeMatrixToCSV(resultCSV, intensityValueMatrix);
 		writeMatrixToCSV(zscoreCSV, zValueMatrix);
+		writeTrueValueCSVs(tempCSVfolder, zValueMatrix);
+		writeMatrixToCSV(zscoreCorrect, zValueCorrect);
 
 
+	}
+
+	private void writeTrueValueCSVs(File seperatedZScoresPerAcid, double[][] matrix) throws IOException {
+		for (int i = 0; i < matrix.length; i++) {
+
+			File newGoodCSV = new File(seperatedZScoresPerAcid.getAbsolutePath() + File
+					.separator + "True_CSV_for_" + ScoringGeneralHelpers.aAcids[i]);
+			FileWriter FWGood = new FileWriter(newGoodCSV);
+			String row = "";
+			for (int k = 0; k < originalPos.length; k++) {
+				if (originalPos[k] == i)
+					row += matrix[i][k] + "\n";
+				FWGood.write(row);
+
+			}
+
+			FWGood.close();
+
+
+		}
+	}
+
+	private void writeMatrixToCSV(File outputCSV, double[][] matrix) throws IOException {
+		FileWriter FW = new FileWriter(outputCSV);
+		for (int i = 0; i < matrix[0].length; i++) {
+			String row = "";
+			for (int j = 0; j < matrix.length; j++) {
+				row += matrix[j][i] + ", ";
+			}
+			row += "\n";
+			FW.write(row);
+		}
+		FW.close();
+	}
+
+	private void writeMatrixToCSV(File outputCSV, double[] matrix) throws IOException {
+		FileWriter FW = new FileWriter(outputCSV);
+
+		String row = "";
+		for (int j = 0; j < matrix.length; j++) {
+			row += matrix[j] + "\n";
+		}
+		FW.write(row);
+
+		FW.close();
 	}
 
 	private Integer[] getOriginalPositions(SimpleProtein myProt) throws InvalidPropertiesFormatException {
@@ -195,21 +258,6 @@ public class MRC_Score {
 			}
 		}
 		return positionArray.toArray(new Integer[positionArray.size()]);
-	}
-
-	private void writeMatrixToCSV(File outputCSV, double[][] matrix) throws IOException {
-		FileWriter FW = new FileWriter(outputCSV);
-
-
-		for (int i = 0; i < matrix[0].length; i++) {
-			String row = "";
-			for (int j = 0; j < matrix.length; j++) {
-				row += matrix[j][i] + ", ";
-			}
-			row += "\n";
-			FW.write(row);
-		}
-		FW.close();
 	}
 
 

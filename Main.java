@@ -19,7 +19,7 @@ public class Main {
 		    MRC_Score myScore = new MRC_Score(mrcpath, args[0]);
 		    myScore.scoreProtein();
 		    myScore.calcZvalue();
-		    System.out.println();
+		    myScore.createCSVs();
 
 
 	    } catch (IOException e) {

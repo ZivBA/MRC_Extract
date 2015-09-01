@@ -1,6 +1,6 @@
 package utils.molecularElements;
 
-import utils.fileUtilities.FileProcessor;
+import utils.ScoreUtilities.ScoringGeneralHelpers;
 import utils.scwrlIntegration.SCWRLrunner;
 
 import java.io.File;
@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static utils.fileUtilities.FileProcessor.*;
+import static utils.ScoreUtilities.ScoringGeneralHelpers.*;
 
 /**
  * Created by zivben on 04/08/15.
@@ -69,18 +69,22 @@ public class ProteinActions {
 
 
 		File outputFolder = makeSubFolderAt(sourceProtein.getSource(), "_scwrlFiles");
-		SCWRLrunner scwrlRun = new SCWRLrunner(FileProcessor.SCWRL_PATH);
+		SCWRLrunner scwrlRun = new SCWRLrunner(ScoringGeneralHelpers.SCWRL_PATH);
 
 		for (SimpleProtein.ProtChain chain : sourceProtein) {
 			for (AminoAcid aminoAcid : chain) {
 
 				for (String newAcid : aAcids) {
 					aminoAcid.substituteWith(newAcid);
+
 					// write new processed file
 					File fileWithNewRes = new File(outputFolder.getAbsolutePath() + File.separator + sourceProtein
 							.getFileName() + "_res_" + aminoAcid.getSeqNum() + "_to_" + newAcid +
 							PDB_EXTENSION);
 
+					if (debug) {
+						System.out.println("Generating permutation: " + fileWithNewRes.getName());
+					}
 					sourceProtein.writePDB(fileWithNewRes);
 					scwrlRun.runScwrl(fileWithNewRes, fileWithNewRes);
 
@@ -135,48 +139,52 @@ public class ProteinActions {
 
 	public static int acidToIndex(String name) throws InvalidPropertiesFormatException {
 
-		if (name.equals("ALA"))
+		if (name.equals("ALA") || name.trim().equals("A"))
 			return 0;
-		if (name.equals("ARG"))
+		if (name.equals("ARG") || name.trim().equals("R"))
 			return 1;
-		if (name.equals("ASN"))
+		if (name.equals("ASN") || name.trim().equals("N"))
 			return 2;
-		if (name.equals("ASP"))
+		if (name.equals("ASP") || name.trim().equals("D"))
 			return 3;
-		if (name.equals("CYS"))
+		if (name.equals("CYS") || name.trim().equals("C"))
 			return 4;
-		if (name.equals("GLU"))
+		if (name.equals("GLU") || name.trim().equals("E"))
 			return 5;
-		if (name.equals("GLN"))
+		if (name.equals("GLN") || name.trim().equals("Q"))
 			return 6;
-		if (name.equals("GLY"))
+		if (name.equals("GLY") || name.trim().equals("G"))
 			return 7;
-		if (name.equals("HIS"))
+		if (name.equals("HIS") || name.trim().equals("H"))
 			return 8;
-		if (name.equals("ILE"))
+		if (name.equals("ILE") || name.trim().equals("I"))
 			return 9;
-		if (name.equals("LEU"))
+		if (name.equals("LEU") || name.trim().equals("L"))
 			return 10;
-		if (name.equals("LYS"))
+		if (name.equals("LYS") || name.trim().equals("K"))
 			return 11;
-		if (name.equals("MET"))
+		if (name.equals("MET") || name.trim().equals("M"))
 			return 12;
-		if (name.equals("PHE"))
+		if (name.equals("PHE") || name.trim().equals("F"))
 			return 13;
-		if (name.equals("PRO"))
+		if (name.equals("PRO") || name.trim().equals("P"))
 			return 14;
-		if (name.equals("SER"))
+		if (name.equals("SER") || name.trim().equals("S"))
 			return 15;
-		if (name.equals("THR"))
+		if (name.equals("THR") || name.trim().equals("T"))
 			return 16;
-		if (name.equals("TRP"))
+		if (name.equals("TRP") || name.trim().equals("W"))
 			return 17;
-		if (name.equals("TYR"))
+		if (name.equals("TYR") || name.trim().equals("Y"))
 			return 18;
-		if (name.equals("VAL"))
+		if (name.equals("VAL") || name.trim().equals("V"))
 			return 19;
 
+		if (name.equals("SEC") || name.trim().equals("U"))
+			return 4;
+			//TODO - fix this 21st amino acid thing.
+
 		else
-			throw new InvalidPropertiesFormatException("Bad AminoAcid Name");
+			throw new InvalidPropertiesFormatException("Bad AminoAcid Name: " + name);
 	}
 }

@@ -8,7 +8,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
-import static utils.fileUtilities.FileProcessor.*;
+import static utils.ScoreUtilities.ScoringGeneralHelpers.*;
 
 /**
  * Created by zivben on 06/08/15.

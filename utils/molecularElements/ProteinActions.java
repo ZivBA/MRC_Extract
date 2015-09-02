@@ -72,13 +72,14 @@ public class ProteinActions {
 		SCWRLrunner scwrlRun = new SCWRLrunner(ScoringGeneralHelpers.SCWRL_PATH);
 
 		for (SimpleProtein.ProtChain chain : sourceProtein) {
+			File ChainFolder = makeSubFolderAt(outputFolder, String.valueOf(chain.getChainID()));
 			for (AminoAcid aminoAcid : chain) {
 
 				for (String newAcid : aAcids) {
 					aminoAcid.substituteWith(newAcid);
 
 					// write new processed file
-					File fileWithNewRes = new File(outputFolder.getAbsolutePath() + File.separator + sourceProtein
+					File fileWithNewRes = new File(ChainFolder.getAbsolutePath() + File.separator + sourceProtein
 							.getFileName() + "_res_" + aminoAcid.getSeqNum() + "_to_" + newAcid +
 							PDB_EXTENSION);
 

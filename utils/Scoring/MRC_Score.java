@@ -28,6 +28,7 @@ public class MRC_Score {
 	Integer[] originalPos;
 	private MRC_Map_New myMap;
 	private SimpleProtein myProt;
+	private char requestedChain;
 	private double[][] intensityValueMatrix;
 	private double[][] zValueMatrix;
 	private double[] zValueCorrect;
@@ -43,6 +44,12 @@ public class MRC_Score {
 
 	public MRC_Score(String mapPath, String protPath) throws IOException {
 		this(new MRC_Map_New(mapPath), new SimpleProtein(new File(protPath)));
+	}
+
+	public MRC_Score(String mapPath, String protPath, String requestedChain) throws IOException {
+		this(new MRC_Map_New(mapPath), new SimpleProtein(new File(protPath), requestedChain));
+		this.requestedChain = requestedChain.charAt(0);
+
 	}
 
 	//	public static MRC_Score StartFromScratch(ScoringGeneralHelpers FP, String mrcpath) {
@@ -64,6 +71,13 @@ public class MRC_Score {
 	//	}
 
 
+	/**
+	 * process the myProt SimpleProtein object, strip residues and iterate all permutations of amino acids.
+	 * run SCWRL external utility for each permutation and return the intensity value matrix result.
+	 *
+	 * @return 2D array of double precision values representing intensity values for each amino acid at each position.
+	 * @throws IOException
+	 */
 	public double[][] scoreProtein() throws IOException {
 		System.out.println("Starting protein scoring, saving original positions.");
 		myProt.saveOriginalPositions();
@@ -121,14 +135,9 @@ public class MRC_Score {
 						}
 					}
 
-					if ((int) residue.getAcidGlobalIndex() == originalPos[residue.getSeqNum() -
-							myProt.getSequenceBias()]) {
-
-						originalAcidsScore[residue.getSeqNum() - myProt.getSequenceBias()] = backBoneSum + resSum;
-					}
 					intensityValueMatrix[acidToIndex(
 							residue.getName())][residue.getSeqNum() - myProt.getSequenceBias()] =
-							backBoneSum + resSum;
+							/*backBoneSum  +*/ resSum;
 
 
 				}
@@ -159,20 +168,31 @@ public class MRC_Score {
 		zValueCorrect = new double[myProt.getLegnth()];
 
 
+		// calc tempAvg per column in the intensity value matrix ( avarage of scores per amino acid in every pos)
 		for (int i = 0; i < intensityValueMatrix.length; i++) {
 			for (int j = 0; j < intensityValueMatrix[i].length; j++) {
 				tempAvg[i] += intensityValueMatrix[i][j];
 			}
 			tempAvg[i] = tempAvg[i] / intensityValueMatrix[i].length;
+
+			//calc standard deviation for each column
 			for (int j = 0; j < intensityValueMatrix[i].length; j++) {
 				tempStD[i] += Math.pow(intensityValueMatrix[i][j] - tempAvg[i], 2);
 			}
 			tempStD[i] = Math.sqrt(tempStD[i] / intensityValueMatrix[i].length);
 		}
 
+		// calc Z-Value for each discrete acid in every position
 		for (int i = 0; i < intensityValueMatrix.length; i++) {
 			for (int j = 0; j < intensityValueMatrix[i].length; j++) {
-				zValueMatrix[i][j] = (intensityValueMatrix[i][j] - tempAvg[i]) / tempStD[i];
+
+				if (originalPos[j] == i) {
+					originalAcidsScore[j] = (intensityValueMatrix[i][j] - tempAvg[i]) / tempStD[i];
+					zValueMatrix[i][j] = 0;
+				} else {
+					zValueMatrix[i][j] = (intensityValueMatrix[i][j] - tempAvg[i]) / tempStD[i];
+				}
+
 			}
 		}
 
@@ -199,31 +219,27 @@ public class MRC_Score {
 
 		writeMatrixToCSV(resultCSV, intensityValueMatrix);
 		writeMatrixToCSV(zscoreCSV, zValueMatrix);
-		writeTrueValueCSVs(tempCSVfolder, zValueMatrix);
-		writeMatrixToCSV(zscoreCorrect, zValueCorrect);
+		writeMatrixToCSV(zscoreCorrect, originalAcidsScore);
+
+		writeTrueValueCSVs(zscoreCorrect, originalAcidsScore, originalPos);
 
 
 	}
 
-	private void writeTrueValueCSVs(File seperatedZScoresPerAcid, double[][] matrix) throws IOException {
-		for (int i = 0; i < matrix.length; i++) {
+	private void writeTrueValueCSVs(File outputCSV, double[] originalAcidsScore, Integer[] originalPos) throws
+			IOException {
+		FileWriter FW = new FileWriter(outputCSV);
 
-			File newGoodCSV = new File(seperatedZScoresPerAcid.getAbsolutePath() + File
-					.separator + "True_CSV_for_" + ScoringGeneralHelpers.aAcids[i]);
-			FileWriter FWGood = new FileWriter(newGoodCSV);
-			String row = "";
-			for (int k = 0; k < originalPos.length; k++) {
-				if (originalPos[k] == i)
-					row += matrix[i][k] + "\n";
-				FWGood.write(row);
-
-			}
-
-			FWGood.close();
-
-
+		String row = "";
+		for (int j = 0; j < originalAcidsScore.length; j++) {
+			row += originalPos[j] + ", " + originalAcidsScore[j] + "\n";
 		}
+		FW.write(row);
+
+		FW.close();
 	}
+
+
 
 	private void writeMatrixToCSV(File outputCSV, double[][] matrix) throws IOException {
 		FileWriter FW = new FileWriter(outputCSV);

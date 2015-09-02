@@ -4,6 +4,7 @@ package utils.ScoreUtilities;
 import utils.ExtractMaxValue;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 
 /**
@@ -40,8 +41,14 @@ public class ScoringGeneralHelpers {
 	}
 
 	public static File makeSubFolderAt(File sourceFile, String targetSubFolder) throws IOException {
-
-		File requestedFolder = new File(sourceFile.getParent() + File.separator + targetSubFolder);
+		File requestedFolder;
+		if (sourceFile.isFile()) {
+			requestedFolder = new File(sourceFile.getParent() + File.separator + targetSubFolder);
+		} else if (sourceFile.isDirectory()) {
+			requestedFolder = new File(sourceFile.getAbsolutePath() + File.separator + targetSubFolder);
+		} else {
+			throw new FileNotFoundException("source folder is not a proper path.");
+		}
 
 		if (requestedFolder.isDirectory()) {
 			System.out.println("Requested folder already exists at:\n" + requestedFolder.getAbsolutePath());

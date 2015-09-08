@@ -1,8 +1,5 @@
 package utils.molecularElements;
 
-import utils.ScoreUtilities.ScoringGeneralHelpers;
-import utils.scwrlIntegration.SCWRLrunner;
-
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -65,11 +62,10 @@ public class ProteinActions {
 		writer.close();
 	}
 
-	public static File iterateAndScwrl(SimpleProtein sourceProtein) throws IOException {
+	public static File iterateAcids(SimpleProtein sourceProtein) throws IOException {
 
 
 		File outputFolder = makeSubFolderAt(sourceProtein.getSource(), "_scwrlFiles");
-		SCWRLrunner scwrlRun = new SCWRLrunner(ScoringGeneralHelpers.SCWRL_PATH);
 
 		for (SimpleProtein.ProtChain chain : sourceProtein) {
 			File ChainFolder = makeSubFolderAt(outputFolder, String.valueOf(chain.getChainID()));
@@ -86,8 +82,10 @@ public class ProteinActions {
 					if (debug) {
 						System.out.println("Generating permutation: " + fileWithNewRes.getName());
 					}
-					sourceProtein.writePDB(fileWithNewRes);
-					scwrlRun.runScwrl(fileWithNewRes, fileWithNewRes);
+
+					if (!fileWithNewRes.exists() || fileWithNewRes.length() == 0) {
+						sourceProtein.writePDB(fileWithNewRes);
+					}
 
 
 					//reset to ALA

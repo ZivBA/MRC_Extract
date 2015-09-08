@@ -1,5 +1,7 @@
 package utils.ScoreUtilities;
 
+import utils.UtilExceptions.CoordOutOfRangeException;
+
 import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -80,7 +82,7 @@ public class MRC_Map_New {
 				(y < yAxis[0]) |
 				(z < zAxis[0])) {
 //			return -0.1*Math.sqrt(x*x+y*y+z*z);
-			throw new RuntimeException("\nIndex out of range: [" + x + "," + y + "," + z + "]\n");
+			throw new CoordOutOfRangeException("\nIndex out of range: [" + x + "," + y + "," + z + "]\n");
 		}
 		int ix = Nx - 1;
 		while (xAxis[ix] > x) {

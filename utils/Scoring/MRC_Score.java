@@ -2,10 +2,12 @@ package utils.Scoring;
 
 import utils.ScoreUtilities.MRC_Map_New;
 import utils.ScoreUtilities.ScoringGeneralHelpers;
+import utils.UtilExceptions.MissingChainID;
 import utils.molecularElements.AminoAcid;
 import utils.molecularElements.ProteinActions;
 import utils.molecularElements.SimpleAtom;
 import utils.molecularElements.SimpleProtein;
+import utils.scwrlIntegration.SCWRLactions;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -14,10 +16,10 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.InvalidPropertiesFormatException;
 import java.util.List;
 
-import static org.apache.commons.lang3.StringUtils.substringAfterLast;
 import static org.apache.commons.lang3.StringUtils.substringBetween;
 import static utils.molecularElements.ProteinActions.acidToIndex;
 
@@ -25,20 +27,16 @@ import static utils.molecularElements.ProteinActions.acidToIndex;
  * Created by zivben on 09/08/15.
  */
 public class MRC_Score {
-	Integer[] originalPos;
+	List<Integer[]> originalPos;
 	private MRC_Map_New myMap;
 	private SimpleProtein myProt;
 	private char requestedChain;
-	private double[][] intensityValueMatrix;
-	private double[][] zValueMatrix;
-	private double[] zValueCorrect;
-	private double[] originalAcidsScore;
+	private double[][] proteinIntensityValueMatrix;
 
 	public MRC_Score(MRC_Map_New myMap, SimpleProtein myProt) {
 		this.myMap = myMap;
 		this.myProt = myProt;
-		intensityValueMatrix = new double[20][myProt.getLegnth()];
-		originalAcidsScore = new double[myProt.getLegnth()];
+		proteinIntensityValueMatrix = new double[20][myProt.getNumChains()];
 
 	}
 
@@ -50,6 +48,10 @@ public class MRC_Score {
 		this(new MRC_Map_New(mapPath), new SimpleProtein(new File(protPath), requestedChain));
 		this.requestedChain = requestedChain.charAt(0);
 
+	}
+
+	public MRC_Map_New getMyMap() {
+		return myMap;
 	}
 
 	//	public static MRC_Score StartFromScratch(ScoringGeneralHelpers FP, String mrcpath) {
@@ -70,7 +72,6 @@ public class MRC_Score {
 	//
 	//	}
 
-
 	/**
 	 * process the myProt SimpleProtein object, strip residues and iterate all permutations of amino acids.
 	 * run SCWRL external utility for each permutation and return the intensity value matrix result.
@@ -78,7 +79,7 @@ public class MRC_Score {
 	 * @return 2D array of double precision values representing intensity values for each amino acid at each position.
 	 * @throws IOException
 	 */
-	public double[][] scoreProtein() throws IOException {
+	public double[][] scoreProtein() throws IOException, MissingChainID {
 		System.out.println("Starting protein scoring, saving original positions.");
 		myProt.saveOriginalPositions();
 		originalPos = myProt.getOriginalPositions();
@@ -86,63 +87,114 @@ public class MRC_Score {
 		System.out.println("Stripping all amino acid resiudes and setting to ALA.");
 		ProteinActions.stripAndAllALAToObject(myProt);
 		System.out.println("Iterating all acid permutations and creating SCWRL input files");
-		File scwrlOutput = ProteinActions.iterateAndScwrl(myProt);
+		File scwrlOutput = ProteinActions.iterateAcids(myProt);
 
-		processSCWRLfolder(scwrlOutput);
+		File chainSubFolders[] = scwrlOutput.listFiles();
+		for (File chain : chainSubFolders) {
+			if (chain.isDirectory()) {
+				if (chain.getAbsolutePath().endsWith(File.separator + requestedChain) || requestedChain == '\0') {
+					SCWRLactions.genSCWRLforFolder(chain);
+				}
+			}
+		}
 
-		return intensityValueMatrix;
+		processSCWRLfolder(scwrlOutput, requestedChain);
+
+		return proteinIntensityValueMatrix;
 	}
 
-	private void processSCWRLfolder(File processingFolder) throws IOException {
+	private void processSCWRLfolder(File processingFolder, char requestedChain) throws IOException, MissingChainID {
 
 		SimpleProtein tempProt;
 
-		List<File> fileNames = new ArrayList<>();
+		List<File> chainFolders = new ArrayList<>();
 		try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(processingFolder.toPath())) {
 			for (Path path : directoryStream) {
-				fileNames.add(path.toFile());
+				if (path.toString().endsWith(File.separator + requestedChain)) {
+					chainFolders.add(path.toFile());
+				} else if (requestedChain == '\0') {
+					chainFolders.add(path.toFile());
+				}
 			}
 		} catch (IOException ex) {
 			throw ex;
 		}
 
-		for (File fileName : fileNames) {
-			tempProt = new SimpleProtein(fileName);
-			scoreSingleScwrl(tempProt);
+		for (File chain : chainFolders) {
+			try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(chain.toPath())) {
+				for (Path path : directoryStream) {
+					tempProt = new SimpleProtein(path.toFile());
+					scoreSingleScwrl(tempProt);
+				}
+			} catch (IOException | MissingChainID ex) {
+				throw ex;
+			}
+
 
 		}
 	}
 
-	private void scoreSingleScwrl(SimpleProtein tempProt) throws InvalidPropertiesFormatException {
+	private void processSCWRLfolder(File processingFolder) throws IOException, MissingChainID {
+
+		SimpleProtein tempProt;
+
+		List<File> chainFolders = new ArrayList<>();
+		try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(processingFolder.toPath())) {
+			for (Path path : directoryStream) {
+				chainFolders.add(path.toFile());
+			}
+		} catch (IOException ex) {
+			throw ex;
+		}
+
+		for (File chain : chainFolders) {
+			try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(chain.toPath())) {
+				for (Path path : directoryStream) {
+					tempProt = new SimpleProtein(path.toFile());
+					scoreSingleScwrl(tempProt);
+				}
+			} catch (IOException | MissingChainID ex) {
+				throw ex;
+			}
+
+
+		}
+	}
+
+	private void scoreSingleScwrl(SimpleProtein tempProt) throws InvalidPropertiesFormatException, MissingChainID {
 
 
 		int testResiduePosition = Integer.valueOf(substringBetween(tempProt.getFileName(), "_res_", "_"));
 		int testResidueIndex = acidToIndex(
-				substringAfterLast(tempProt.getFileName(), "_"));
+				substringBetween(tempProt.getFileName(), "_to_", "_SCWRLed"));
 
 		for (SimpleProtein.ProtChain chain : tempProt) {
-			for (AminoAcid residue : chain) {
+			if (chain.getChainID() == requestedChain || requestedChain == '\0') {
+				for (AminoAcid residue : chain) {
 
-				if (residue.getSeqNum() == testResiduePosition && acidToIndex(
-						residue.getName()) == testResidueIndex) {
-					double resSum = 0;
-					double backBoneSum = 0;
-					for (SimpleAtom atom : residue) {
-						if (atom.isBackbone()) {
-							backBoneSum += scoreSingleAtom(atom);
-						} else {
-							resSum += scoreSingleAtom(atom);
+					if (residue.getSeqNum() == testResiduePosition && acidToIndex(
+							residue.getName()) == testResidueIndex) {
+						double resSum = 0;
+						double backBoneSum = 0;
+						for (SimpleAtom atom : residue) {
+							if (atom.isBackbone()) {
+								backBoneSum += scoreSingleAtom(atom);
+							} else {
+								resSum += scoreSingleAtom(atom);
+							}
 						}
-					}
 
-					intensityValueMatrix[acidToIndex(
-							residue.getName())][residue.getSeqNum() - myProt.getSequenceBias()] =
+						SimpleProtein.ProtChain originalChain = myProt.getChain(residue.getChainID());
+						if (originalChain == null)
+							throw new MissingChainID(residue.getChainID(), tempProt);
+						originalChain.intensityValueMatrix[acidToIndex(
+								residue.getName())][residue.getSeqNum() - originalChain.getSequenceBias()] =
 							/*backBoneSum  +*/ resSum;
 
 
+					}
 				}
 			}
-
 		}
 
 
@@ -155,6 +207,9 @@ public class MRC_Score {
 			atom.setAtomScore(myMap.val(coords[0], coords[1], coords[2]));
 		} catch (RuntimeException e) {
 			System.out.println("Warning, PDB contains coordinate value outside MRC map scope.");
+			System.out.println("Atom " + atom.getName() + " from residue " + atom.getaAcidName() + " at coordinates " +
+					Arrays.toString(atom.getAtomCoords()) + " is the problem.");
+			System.out.println("problematic line from PDB is: \n" + atom.getOriginalString() + "\n");
 			atom.setAtomScore(0.0);
 		}
 		return atom.getAtomScore();
@@ -162,83 +217,97 @@ public class MRC_Score {
 
 	public void calcZvalue() throws InvalidPropertiesFormatException {
 		System.out.println("Calculating Z-Values");
+		for (SimpleProtein.ProtChain chain : myProt) {
+			zValueHelper(chain);
+		}
+
+	}
+
+	private void zValueHelper(SimpleProtein.ProtChain chain) {
 		double tempAvg[] = new double[20];
 		double tempStD[] = new double[20];
-		zValueMatrix = new double[intensityValueMatrix.length][intensityValueMatrix[0].length];
-		zValueCorrect = new double[myProt.getLegnth()];
+		chain.zValueMatrix = new double[chain.intensityValueMatrix.length][chain.intensityValueMatrix[0].length];
 
 
 		// calc tempAvg per column in the intensity value matrix ( avarage of scores per amino acid in every pos)
-		for (int i = 0; i < intensityValueMatrix.length; i++) {
-			for (int j = 0; j < intensityValueMatrix[i].length; j++) {
-				tempAvg[i] += intensityValueMatrix[i][j];
+		for (int i = 0; i < chain.intensityValueMatrix.length; i++) {
+			for (int j = 0; j < chain.intensityValueMatrix[i].length; j++) {
+				tempAvg[i] += chain.intensityValueMatrix[i][j];
 			}
-			tempAvg[i] = tempAvg[i] / intensityValueMatrix[i].length;
+			tempAvg[i] = tempAvg[i] / chain.intensityValueMatrix[i].length;
 
 			//calc standard deviation for each column
-			for (int j = 0; j < intensityValueMatrix[i].length; j++) {
-				tempStD[i] += Math.pow(intensityValueMatrix[i][j] - tempAvg[i], 2);
+			for (int j = 0; j < chain.intensityValueMatrix[i].length; j++) {
+				tempStD[i] += Math.pow(chain.intensityValueMatrix[i][j] - tempAvg[i], 2);
 			}
-			tempStD[i] = Math.sqrt(tempStD[i] / intensityValueMatrix[i].length);
+			tempStD[i] = Math.sqrt(tempStD[i] / chain.intensityValueMatrix[i].length);
 		}
 
 		// calc Z-Value for each discrete acid in every position
-		for (int i = 0; i < intensityValueMatrix.length; i++) {
-			for (int j = 0; j < intensityValueMatrix[i].length; j++) {
+		for (int i = 0; i < chain.intensityValueMatrix.length; i++) {
+			for (int j = 0; j < chain.intensityValueMatrix[i].length; j++) {
 
-				if (originalPos[j] == i) {
-					originalAcidsScore[j] = (intensityValueMatrix[i][j] - tempAvg[i]) / tempStD[i];
-					zValueMatrix[i][j] = 0;
+				if (chain.originalPositions[j] == i) {
+					chain.originalAcidsScore[j] = (chain.intensityValueMatrix[i][j] - tempAvg[i]) / tempStD[i];
+					chain.zValueMatrix[i][j] = 0;
 				} else {
-					zValueMatrix[i][j] = (intensityValueMatrix[i][j] - tempAvg[i]) / tempStD[i];
+					chain.zValueMatrix[i][j] = (chain.intensityValueMatrix[i][j] - tempAvg[i]) / tempStD[i];
 				}
 
 			}
 		}
 
-		Integer[] suspectedCorrectPositions = myProt.getOriginalPositions();
+		Integer[] suspectedCorrectPositions = chain.getOriginalPositions();
 
 		for (int i = 0; i < suspectedCorrectPositions.length; i++) {
-			zValueCorrect[i] = zValueMatrix[suspectedCorrectPositions[i]][i];
+			chain.zValueCorrect[i] = chain.zValueMatrix[suspectedCorrectPositions[i]][i];
 		}
-
 	}
 
 	public void createCSVs() throws IOException {
 
 		System.out.println("Creating CSV Files");
-		File resultCSV = new File(myProt.getSource().getAbsolutePath().substring(0, myProt.getSource()
-				.getAbsolutePath().indexOf(".pdb")) + "_resultMatrix.csv");
-		File zscoreCSV = new File(myProt.getSource().getAbsolutePath().substring(0, myProt.getSource()
-				.getAbsolutePath().indexOf(".pdb")) + "_zscore.csv");
-		File zscoreCorrect = new File(myProt.getSource().getAbsolutePath().substring(0, myProt.getSource()
-				.getAbsolutePath().indexOf(".pdb")) + "_zscoreCorrect.csv");
-
 		File tempCSVfolder = ScoringGeneralHelpers.makeFolder(new File(myProt.getSource().getParent() + File
 				.separator + "tempCSVs"));
 
-		writeMatrixToCSV(resultCSV, intensityValueMatrix);
-		writeMatrixToCSV(zscoreCSV, zValueMatrix);
-		writeMatrixToCSV(zscoreCorrect, originalAcidsScore);
 
-		writeTrueValueCSVs(zscoreCorrect, originalAcidsScore, originalPos);
+		for (SimpleProtein.ProtChain chain : myProt) {
+
+			File resultCSV = new File(tempCSVfolder.getAbsolutePath() + File.separator + myProt.getFileName()
+					+ "_Chain_" + chain.getChainID() + "_resultMatrix.csv");
+			File zscoreCSV = new File(tempCSVfolder.getAbsolutePath() + File.separator + myProt.getFileName()
+					+ "_Chain_" + chain.getChainID() + "_zscore.csv");
+			File zscoreCorrect = new File(
+					tempCSVfolder.getAbsolutePath() + File.separator + myProt.getFileName() + "_Chain_" + chain
+							.getChainID() + "_zscoreCorrect.csv");
+
+			File correctPositions = new File(
+					tempCSVfolder.getAbsolutePath() + File.separator + myProt.getFileName() + "_Chain_" + chain
+							.getChainID() +
+							"_originalPositions.csv");
+
+			writeMatrixToCSV(resultCSV, chain.intensityValueMatrix);
+			writeMatrixToCSV(zscoreCSV, chain.zValueMatrix);
+			writeTrueValueCSVs(zscoreCorrect, chain);
+			writeMatrixToCSV(correctPositions, chain.originalPositions);
+
+		}
 
 
 	}
 
-	private void writeTrueValueCSVs(File outputCSV, double[] originalAcidsScore, Integer[] originalPos) throws
+	private void writeTrueValueCSVs(File outputCSV, SimpleProtein.ProtChain chain) throws
 			IOException {
 		FileWriter FW = new FileWriter(outputCSV);
 
 		String row = "";
-		for (int j = 0; j < originalAcidsScore.length; j++) {
-			row += originalPos[j] + ", " + originalAcidsScore[j] + "\n";
+		for (int j = 0; j < chain.originalAcidsScore.length; j++) {
+			row += chain.originalPositions[j] + ", " + chain.originalAcidsScore[j] + "\n";
 		}
 		FW.write(row);
 
 		FW.close();
 	}
-
 
 
 	private void writeMatrixToCSV(File outputCSV, double[][] matrix) throws IOException {
@@ -266,6 +335,18 @@ public class MRC_Score {
 		FW.close();
 	}
 
+	private void writeMatrixToCSV(File outputCSV, Integer[] matrix) throws IOException {
+		FileWriter FW = new FileWriter(outputCSV);
+
+		String row = "";
+		for (int j = 0; j < matrix.length; j++) {
+			row += matrix[j] + "\n";
+		}
+		FW.write(row);
+
+		FW.close();
+	}
+
 	private Integer[] getOriginalPositions(SimpleProtein myProt) throws InvalidPropertiesFormatException {
 		List<Integer> positionArray = new ArrayList<>();
 		for (SimpleProtein.ProtChain chain : myProt) {
@@ -277,4 +358,7 @@ public class MRC_Score {
 	}
 
 
+	public SimpleProtein getMyProt() {
+		return myProt;
+	}
 }

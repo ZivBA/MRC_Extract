@@ -27,17 +27,37 @@ public class SCWRLactions {
 		System.out.println("******************************************************************");
 		List<File> fileNames = new ArrayList<>();
 		long startTime = System.currentTimeMillis();
+		float tempTime;
 		try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(tempFolder.toPath())) {
 			for (Path path : directoryStream) {
-				fileNames.add(path.toFile());
+				if (!path.getFileName().toString().endsWith("_SCWRLed.pdb")) {
+					fileNames.add(path.toFile());
+				}
 			}
 		} catch (IOException ex) {
 			throw ex;
 		}
 
-		File targetFolder = makeSubFolderAt(tempFolder, "_SCWRL");
+		int numOfFiles = fileNames.size();
+		int blockSize = (int) (numOfFiles / (Math.ceil(Math.log10(numOfFiles))));
+		int filesScwrled = 0;
+		SCWRLrunner scwrl = new SCWRLrunner(SCWRL_PATH);
 		for (File fileName : fileNames) {
-			scwrlRunOnce(fileName, targetFolder);
+			File SCWRLFile = new File(fileName.getAbsolutePath().replace(".pdb", "_SCWRLed.pdb"));
+			if (!SCWRLFile.exists()) {
+				scwrl.runScwrl(fileName, SCWRLFile);
+			}
+			fileName.delete();
+			filesScwrled++;
+			if (filesScwrled % blockSize == 0) {
+				tempTime = System.currentTimeMillis();
+				float elapsed = (tempTime - startTime) / 1000f;
+				System.out.println("Processed " + filesScwrled + " files out of " + numOfFiles + "\nthis batch took: "
+						+ String.valueOf(elapsed));
+				System.out.println("Should probably take about " + ((numOfFiles - filesScwrled) / blockSize *
+						elapsed) +
+						" Seconds");
+			}
 		}
 		long stopTime = System.currentTimeMillis();
 		float elapsedTime = (stopTime - startTime) / 1000f;

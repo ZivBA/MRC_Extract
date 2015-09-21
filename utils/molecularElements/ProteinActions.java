@@ -136,9 +136,38 @@ public class ProteinActions {
 		}
 	}
 
+	public static char resToSingleLetter(String name) throws InvalidPropertiesFormatException {
+
+		for (int i = 0; i < aAcids.length; i++) {
+			if (aAcids[i].equalsIgnoreCase(name)) {
+				return singleLetters[i];
+			}
+
+		}
+
+		throw new InvalidPropertiesFormatException("Bad AminoAcid Name: " + name);
+
+
+	}
+
 	public static int acidToIndex(String name) throws InvalidPropertiesFormatException {
 
-		if (name.equals("ALA") || name.trim().equals("A"))
+		for (int i = 0; i < aAcids.length; i++) {
+			if (name.trim().equalsIgnoreCase(aAcids[i]) || name.trim().equalsIgnoreCase(
+					String.valueOf(singleLetters[i]))) {
+				return i;
+			}
+		}
+		// failsafe for noncommon acids, add cases if necessary.
+		if (name.equals("SEC") || name.trim().equals("U")) {
+			return 4;
+			//TODO - fix this 21st amino acid thing.
+		} else
+			throw new InvalidPropertiesFormatException("Bad AminoAcid Name: " + name);
+
+
+		// old method for reference. acid order is incorrect.
+		/*if (name.equals("ALA") || name.trim().equals("A"))
 			return 0;
 		if (name.equals("ARG") || name.trim().equals("R"))
 			return 1;
@@ -181,9 +210,11 @@ public class ProteinActions {
 
 		if (name.equals("SEC") || name.trim().equals("U"))
 			return 4;
-			//TODO - fix this 21st amino acid thing.
+
 
 		else
-			throw new InvalidPropertiesFormatException("Bad AminoAcid Name: " + name);
+			throw new InvalidPropertiesFormatException("Bad AminoAcid Name: " + name);*/
+
+
 	}
 }

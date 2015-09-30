@@ -22,12 +22,11 @@ public class ScoringGeneralHelpers {
 			= ".pdb";
 	//consts
 	// keep ALA as first item, as this is being called explicitly by stripAllRes method.
-	public static final String[] aAcids = {"Ala", "Cys", "Asp", "Glu", "Phe", "Gly", "His", "Ile",
-			"Lys", "Leu", "Met", "Asn", "Pro", "Gln", "Arg", "Ser", "Thr", "Val", "Trp", "Tyr"};
+	public static final String[] aAcids = {"ALA", "CYS", "ASP", "GLU", "PHE", "GLY", "HIS", "ILE",
+			"LYS", "LEU", "MET", "ASN", "PRO", "GLN", "ARG", "SER", "THR", "VAL", "TRP", "TYR"};
 
 	public static final char[] singleLetters = {'A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q',
-			'R', 'S', 'T',
-			'V', 'W', 'Y'};
+			'R', 'S', 'T', 'V', 'W', 'Y'};
 	public static boolean debug = false;
 	private File source;
 	private File dest;

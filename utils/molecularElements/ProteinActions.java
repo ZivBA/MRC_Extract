@@ -138,13 +138,27 @@ public class ProteinActions {
 
 	public static char resToSingleLetter(String name) throws InvalidPropertiesFormatException {
 
-		for (int i = 0; i < aAcids.length; i++) {
-			if (aAcids[i].equalsIgnoreCase(name)) {
-				return singleLetters[i];
-			}
+		if (name.trim().length() > 1) {
+			for (int i = 0; i < aAcids.length; i++) {
+				if (aAcids[i].equalsIgnoreCase(name)) {
+					return singleLetters[i];
+				}
 
+			}
+		} else {
+
+			for (int i = 0; i < singleLetters.length; i++) {
+				if (singleLetters[i] == name.trim().toUpperCase().charAt(0)) {
+					return singleLetters[i];
+				}
+
+			}
 		}
 
+		if (name.equals("SEC") || name.trim().equals("U")) {
+			return 4;
+			//TODO - fix this 21st amino acid thing.
+		} else
 		throw new InvalidPropertiesFormatException("Bad AminoAcid Name: " + name);
 
 

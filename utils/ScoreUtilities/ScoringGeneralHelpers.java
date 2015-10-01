@@ -2,6 +2,7 @@ package utils.ScoreUtilities;
 
 
 import utils.ExtractMaxValue;
+import utils.molecularElements.SimpleProtein;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -27,6 +28,13 @@ public class ScoringGeneralHelpers {
 
 	public static final char[] singleLetters = {'A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q',
 			'R', 'S', 'T', 'V', 'W', 'Y'};
+
+	// vector designating which amino acids have negative signal. those are to be multiplied by "-1" to normalize the
+	// zvalues for further processing. vector is 20 positions in order of AA same as seen above.
+	public static final double[] signalNegValueVector = {-1.0, -1.0, -1.0, -1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1
+			.0, 1.0, 1.0,
+			1.0, -1.0, -1.0, 1.0, -1.0, 1.0};
+
 	public static boolean debug = false;
 	private File source;
 	private File dest;
@@ -82,6 +90,19 @@ public class ScoringGeneralHelpers {
 		return requestedFolder;
 	}
 
+	public static void multiplyMatrixByVector(double[][] allZvalueMatrix) {
+		for (int i = 0; i < allZvalueMatrix.length; i++) {
+			for (int j = 0; j < allZvalueMatrix[i].length; j++) {
+				allZvalueMatrix[i][j] *= signalNegValueVector[i];
+			}
+		}
+	}
+
+	public static void multiplyMatrixByVector(SimpleProtein.ProtChain chain) {
+		for (int i = 0; i < chain.trueZvalues.length; i++) {
+			chain.trueZvalues[i] *= signalNegValueVector[chain.originalPositions[i]];
+		}
+	}
 
 	private void getMaxIntensityValueFromMRCFile(String arg) {
 		// create MRC object with helper class MRC_map
@@ -113,6 +134,4 @@ public class ScoringGeneralHelpers {
 	public File getSource() {
 		return source;
 	}
-
-
 }

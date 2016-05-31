@@ -3,47 +3,68 @@ import utils.Scoring.MRC_Score;
 import utils.UtilExceptions.MissingChainID;
 import utils.molecularElements.SimpleProtein;
 
+import java.io.File;
 import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 
 public class Main {
 
-    /**
-     * take command line argument 0 as path to MRC file, print out highest intensity + coords
-     *
-     * @param args path to MRC file
-     */
-    public static void main(String[] args) throws MissingChainID {
-	    String mrcpath = "//home//zivben//IdeaProjects//sputnikVirophage//EMD-5495.mrc";
-	    //	    String mrcpath = "//home//zivben//IdeaProjects//TestFilesForBBGenerator//3j06.mrc";
+	/**
+	 * takes one argument - file with list of chains to process
+	 * each line must contain one protein to process, with optional chain designation, in the following format:
+	 * <absolute path to PDB file> <abs path to map file> <optional: chain letter, case sensitive>
+	 * comment lines in the argument file start with "###" (three hashes).
+	 *
+	 * @param args path to MRC file
+	 */
+	public static void main(String[] args) throws MissingChainID {
+		// How many threads to run in parrallel (number of available threads multiplied by fraction wanted)
+//		int cores = (int) Math.ceil(Runtime.getRuntime().availableProcessors() *0.25);
+		int cores = 1;
+		if (args.length > 1) {
 
-	    SimpleProtein sourceProtein = null;
-	    try {
-		    if (args.length == 2) {
-			    MRC_Score myScore = new MRC_Score(args[1], args[0]);
-			    float[] maxValResult = ExtractMaxValue.getMaxValue(myScore.getMyMap());
-			    System.out.println(Arrays.toString(maxValResult));
-			    ExtractMaxValue.writeMarkerFile(myScore.getMyProt().getSource().getParent(), maxValResult);
-			    myScore.scoreProtein();
-			    myScore.calcZvalue();
-			    myScore.createCSVs();
-		    } else if (args.length == 3) {
-			    MRC_Score myScore = new MRC_Score(args[1], args[0], args[2]);
-			    float[] maxValResult = ExtractMaxValue.getMaxValue(myScore.getMyMap());
-			    System.out.println(Arrays.toString(maxValResult));
-			    ExtractMaxValue.writeMarkerFile(myScore.getMyProt().getSource().getParent(), maxValResult);
-			    myScore.scoreProtein();
-			    myScore.calcZvalue();
-			    myScore.createCSVs();
-
-		    }
-
-	    } catch (IOException e) {
-		    e.printStackTrace();
-	    }
+			try {
+				cores = Integer.parseInt(args[1]);
+			} catch (NumberFormatException e) {
+				System.err.println("Number of cores: " + args[1] + " must be an integer.");
+				System.exit(1);
+			}
+		}
+		Path inputChainList = (new File(args[0])).toPath();
+		// create new executor service with a threadpool of the required size.
+//		ExecutorService executor = Executors.newFixedThreadPool(cores);
+		ExecutorService executor = Executors.newFixedThreadPool(1);
 
 
-    }
+		try {
+			// seperate argument file into a list of valid input chains and create new worker thread per chain.
+			List<String> chainsToProcess = Files.readAllLines(inputChainList, Charset.defaultCharset());
+			for (String chain : chainsToProcess) {
+				if (!chain.startsWith("###")) {
+					String[] tempArgs = chain.split(" ");
+					Runnable worker = new WorkerThread(tempArgs);
+					executor.execute(worker);
+				}
+			}
+			executor.shutdown();
+			while (!executor.isTerminated()) {
+			}
+			System.out.println("Finished all threads");
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+
+	}
+
 
 }
+

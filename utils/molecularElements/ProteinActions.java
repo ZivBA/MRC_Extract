@@ -76,12 +76,12 @@ public class ProteinActions {
 
 					// write new processed file
 					File fileWithNewRes = new File(ChainFolder.getAbsolutePath() + File.separator + sourceProtein
-							.getFileName() + "_res_" + aminoAcid.getSeqNum() + "_to_" + newAcid +
+							.getFileName() + "_res_" + aminoAcid.getPosition() + "_to_" + newAcid +
 							PDB_EXTENSION);
 
-					if (debug) {
-						System.out.println("Generating permutation: " + fileWithNewRes.getName());
-					}
+//					if (debug) {
+//						System.out.println("Generating permutation: " + fileWithNewRes.getName());
+//					}
 
 					if (!fileWithNewRes.exists() || fileWithNewRes.length() == 0) {
 						sourceProtein.writePDB(fileWithNewRes);
@@ -90,6 +90,7 @@ public class ProteinActions {
 
 					//reset to ALA
 					aminoAcid.substituteWith("ALA");
+					aminoAcid.strip();
 
 				}
 
@@ -111,7 +112,7 @@ public class ProteinActions {
 	 * @param outputFolder output folder
 	 * @throws IOException
 	 */
-	public static void iterateAllAcidsToFile(SimpleProtein prot, File outputFolder) throws IOException {
+	public static void iterateAllAcidsToFile(SimpleProtein prot, File outputFolder)  {
 
 		// go over all AA in the protein
 		for (SimpleProtein.ProtChain chain : prot) {
@@ -122,10 +123,15 @@ public class ProteinActions {
 					aminoAcid.substituteWith(acid);
 					// write new processed file
 					File fileWithNewRes = new File(outputFolder.getAbsolutePath() + File.separator + prot
-							.getFileName() + "_res_" + aminoAcid.getSeqNum() + "_to_" + acid +
+							.getFileName() + "_res_" + aminoAcid.getPosition() + "_to_" + acid +
 							PDB_EXTENSION);
 
-					prot.writePDB(fileWithNewRes);
+					try {
+						prot.writePDB(fileWithNewRes);
+					} catch (IOException e) {
+						System.out.println("Error writing PDB file for the file: \n" + fileWithNewRes.getAbsolutePath()
+						+ "\n acid to substitute was: " + acid + " and the requested output folder was: \n"+ outputFolder.getAbsolutePath());
+					}
 
 					//reset to ALA
 					aminoAcid.substituteWith("ALA");
@@ -156,7 +162,7 @@ public class ProteinActions {
 		}
 
 		if (name.equals("SEC") || name.trim().equals("U")) {
-			return 4;
+			return 1;
 			//TODO - fix this 21st amino acid thing.
 		} else
 		throw new InvalidPropertiesFormatException("Bad AminoAcid Name: " + name);
@@ -174,60 +180,11 @@ public class ProteinActions {
 		}
 		// failsafe for noncommon acids, add cases if necessary.
 		if (name.equals("SEC") || name.trim().equals("U")) {
-			return 4;
+			return 1;
 			//TODO - fix this 21st amino acid thing.
 		} else
 			throw new InvalidPropertiesFormatException("Bad AminoAcid Name: " + name);
 
-
-		// old method for reference. acid order is incorrect.
-		/*if (name.equals("ALA") || name.trim().equals("A"))
-			return 0;
-		if (name.equals("ARG") || name.trim().equals("R"))
-			return 1;
-		if (name.equals("ASN") || name.trim().equals("N"))
-			return 2;
-		if (name.equals("ASP") || name.trim().equals("D"))
-			return 3;
-		if (name.equals("CYS") || name.trim().equals("C"))
-			return 4;
-		if (name.equals("GLU") || name.trim().equals("E"))
-			return 5;
-		if (name.equals("GLN") || name.trim().equals("Q"))
-			return 6;
-		if (name.equals("GLY") || name.trim().equals("G"))
-			return 7;
-		if (name.equals("HIS") || name.trim().equals("H"))
-			return 8;
-		if (name.equals("ILE") || name.trim().equals("I"))
-			return 9;
-		if (name.equals("LEU") || name.trim().equals("L"))
-			return 10;
-		if (name.equals("LYS") || name.trim().equals("K"))
-			return 11;
-		if (name.equals("MET") || name.trim().equals("M"))
-			return 12;
-		if (name.equals("PHE") || name.trim().equals("F"))
-			return 13;
-		if (name.equals("PRO") || name.trim().equals("P"))
-			return 14;
-		if (name.equals("SER") || name.trim().equals("S"))
-			return 15;
-		if (name.equals("THR") || name.trim().equals("T"))
-			return 16;
-		if (name.equals("TRP") || name.trim().equals("W"))
-			return 17;
-		if (name.equals("TYR") || name.trim().equals("Y"))
-			return 18;
-		if (name.equals("VAL") || name.trim().equals("V"))
-			return 19;
-
-		if (name.equals("SEC") || name.trim().equals("U"))
-			return 4;
-
-
-		else
-			throw new InvalidPropertiesFormatException("Bad AminoAcid Name: " + name);*/
 
 
 	}

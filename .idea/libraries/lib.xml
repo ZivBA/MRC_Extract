@@ -2,6 +2,7 @@
   <library name="lib">
     <CLASSES>
       <root url="file://$PROJECT_DIR$/../jFreeChart/lib" />
+      <root url="jar://$PROJECT_DIR$/../commons-lang3-3.4.jar!/" />
     </CLASSES>
     <JAVADOC />
     <SOURCES />

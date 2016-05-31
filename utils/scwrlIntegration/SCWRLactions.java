@@ -22,9 +22,11 @@ public class SCWRLactions {
 	 */
 	public static void genSCWRLforFolder(File tempFolder) throws IOException {
 
-		System.out.println("******************************************************************");
-		System.out.println("Processing SCWRL input folder: \n" + tempFolder.getAbsolutePath());
-		System.out.println("******************************************************************");
+		if (debug) {
+			System.out.println("******************************************************************");
+			System.out.println("Processing SCWRL input folder: \n" + tempFolder.getAbsolutePath());
+			System.out.println("******************************************************************");
+		}
 		List<File> fileNames = new ArrayList<>();
 		long startTime = System.currentTimeMillis();
 		float tempTime;
@@ -49,22 +51,26 @@ public class SCWRLactions {
 			}
 			fileName.delete();
 			filesScwrled++;
-			if (filesScwrled % blockSize == 0) {
-				tempTime = System.currentTimeMillis();
-				float elapsed = (tempTime - startTime) / 1000f;
-				System.out.println("Processed " + filesScwrled + " files out of " + numOfFiles + "\nthis batch took: "
-						+ String.valueOf(elapsed));
-				System.out.println("Should probably take about " + ((numOfFiles - filesScwrled) / blockSize *
-						elapsed) +
-						" Seconds");
+			if (debug) {
+				if (filesScwrled % blockSize == 0) {
+					tempTime = System.currentTimeMillis();
+					float elapsed = (tempTime - startTime) / 1000f;
+					System.out.println("Processed " + filesScwrled + " files out of " + numOfFiles + "\nthis batch took: "
+							+ String.valueOf(elapsed));
+					System.out.println("Should probably take about " + ((numOfFiles - filesScwrled) / blockSize *
+							elapsed) +
+							" Seconds");
+				}
 			}
 		}
-		long stopTime = System.currentTimeMillis();
-		float elapsedTime = (stopTime - startTime) / 1000f;
-		System.out.println("******************************************************************");
-		System.out.println("Generated: " + fileNames.size() + " Files in: " + elapsedTime + " seconds");
-		System.out.println("******************************************************************");
-		System.out.println("SCWRL execution terminated!");
+		if (debug) {
+			long stopTime = System.currentTimeMillis();
+			float elapsedTime = (stopTime - startTime) / 1000f;
+			System.out.println("******************************************************************");
+			System.out.println("Generated: " + fileNames.size() + " Files in: " + elapsedTime + " seconds");
+			System.out.println("******************************************************************");
+			System.out.println("SCWRL execution terminated!");
+		}
 
 
 	}

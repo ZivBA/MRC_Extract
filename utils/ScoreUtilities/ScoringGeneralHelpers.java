@@ -7,6 +7,10 @@ import utils.molecularElements.SimpleProtein;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Created by Ziv_BA on 30/07/2015.
@@ -31,9 +35,23 @@ public class ScoringGeneralHelpers {
 
 	// vector designating which amino acids have negative signal. those are to be multiplied by "-1" to normalize the
 	// zvalues for further processing. vector is 20 positions in order of AA same as seen above.
-	public static final double[] signalNegValueVector = {-1.0, -1.0, -1.0, -1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1
-			.0, 1.0, 1.0,
-			1.0, -1.0, -1.0, 1.0, -1.0, 1.0};
+//	public static final double[] vector2 = {1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, 1.0,
+//			1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, 1.0, 1.0, 1.0,};
+//
+//	public static final double[] vector3 = {1.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 1.0,
+//			1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0,};
+//
+//	public static final double[] vector4 = {-1.0, 1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+//			1.0, 1.0, 1.0, 1.0, 1.0, -1.0, 1.0, 1.0, 1.0, 1.0,};
+
+
+	public static double[] latestVector = {-1.0, 1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+			1.0, 1.0, 1.0, 1.0, 1.0, -1.0, 1.0, 1.0, 1.0, 1.0,};
+
+
+	public static double[] normalVector = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+			1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,};
+
 
 	public static boolean debug = false;
 	private File source;
@@ -61,12 +79,15 @@ public class ScoringGeneralHelpers {
 		}
 
 		if (requestedFolder.isDirectory()) {
-			System.out.println("Requested folder already exists at:\n" + requestedFolder.getAbsolutePath());
+			if (debug)
+				System.out.println("Requested folder already exists at:\n" + requestedFolder.getAbsolutePath());
 		} else {
 			if (requestedFolder.mkdir()) {
-				System.out.println("Created requested folder \n" + requestedFolder.getAbsolutePath());
+				if (debug)
+					System.out.println("Created requested folder \n" + requestedFolder.getAbsolutePath());
 			} else {
-				System.out.println("Requested Folder not created");
+				if (debug)
+					System.out.println("Requested Folder not created");
 				throw new IOException();
 			}
 		}
@@ -77,12 +98,15 @@ public class ScoringGeneralHelpers {
 	public static File makeFolder(File requestedFolder) throws IOException {
 
 		if (requestedFolder.isDirectory()) {
-			System.out.println("Requested folder already exists at:\n" + requestedFolder.getAbsolutePath());
+			if (debug)
+				System.out.println("Requested folder already exists at:\n" + requestedFolder.getAbsolutePath());
 		} else {
 			if (requestedFolder.mkdir()) {
-				System.out.println("Created requested folder \n" + requestedFolder.getAbsolutePath());
+				if (debug)
+					System.out.println("Created requested folder \n" + requestedFolder.getAbsolutePath());
 			} else {
-				System.out.println("Requested Folder not created");
+				if (debug)
+					System.out.println("Requested Folder not created");
 				throw new IOException();
 			}
 		}
@@ -90,17 +114,28 @@ public class ScoringGeneralHelpers {
 		return requestedFolder;
 	}
 
-	public static void multiplyMatrixByVector(double[][] allZvalueMatrix) {
+	public static void multiplyMatrixByVector(double[][] allZvalueMatrix, double[] vector) {
 		for (int i = 0; i < allZvalueMatrix.length; i++) {
 			for (int j = 0; j < allZvalueMatrix[i].length; j++) {
-				allZvalueMatrix[i][j] *= signalNegValueVector[i];
+				allZvalueMatrix[i][j] *= vector[i];
 			}
 		}
 	}
 
-	public static void multiplyMatrixByVector(SimpleProtein.ProtChain chain) {
+	public static void multiplyMatrixByVector(SimpleProtein.ProtChain chain, double[] vector) {
+		for (int i = 0; i < chain.allZvalueMatrix.length; i++) {
+			for (int j = 0; j < chain.allZvalueMatrix[i].length; j++) {
+				chain.allZvalueMatrix[i][j] *= vector[i];
+			}
+		}
 		for (int i = 0; i < chain.trueZvalues.length; i++) {
-			chain.trueZvalues[i] *= signalNegValueVector[chain.originalPositions[i]];
+			chain.trueZvalues[i] *= vector[chain.originalPositions[i]];
+		}
+	}
+
+	public static void multiplyMatrixByVector(double[] truzvaltmp, double[] vector) {
+		for (int i = 0; i < truzvaltmp.length; i++) {
+			truzvaltmp[i] *= vector[i];
 		}
 	}
 
@@ -116,8 +151,7 @@ public class ScoringGeneralHelpers {
 		}
 
 		float[] results = ExtractMaxValue.getMaxValue(mrcMap);
-		System.out.println("heighest intensity was: " + results[0] + " was detected at: " + results[1] +
-				"," +
+		System.out.println("heighest intensity was: " + results[0] + " was detected at: " + results[1] + "," +
 				results[2] + "," + results[3]);
 
 		if (mrcMap != null) {
@@ -133,5 +167,26 @@ public class ScoringGeneralHelpers {
 
 	public File getSource() {
 		return source;
+	}
+
+
+	public static double[][] csvToMatrix(File resultCSV) {
+		double[][] resultMatrix;
+		try {
+			List<String> csvList = Files.readAllLines(resultCSV.toPath(), Charset.defaultCharset());
+			resultMatrix = new double[csvList.get(0).split(",").length][csvList.size()];
+			for (int i = 0; i < csvList.size(); i++) {
+				String[] tempLine = csvList.get(i).split(",");
+				for (int j = 0; j < csvList.get(0).split(",").length; j++) {
+					resultMatrix[j][i] = Double.parseDouble(tempLine[j]);
+				}
+			}
+
+		} catch (IOException e) {
+			if (debug)
+				System.out.println("Cannot read requested CSV");
+			return null;
+		}
+		return resultMatrix;
 	}
 }

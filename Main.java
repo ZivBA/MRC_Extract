@@ -27,8 +27,8 @@ public class Main {
 	 */
 	public static void main(String[] args) throws MissingChainID {
 		// How many threads to run in parrallel (number of available threads multiplied by fraction wanted)
-//		int cores = (int) Math.ceil(Runtime.getRuntime().availableProcessors() *0.25);
-		int cores = 1;
+		int cores = (int) Math.ceil(Runtime.getRuntime().availableProcessors() *0.25);
+//		int cores = 1;
 		if (args.length > 1) {
 
 			try {
@@ -41,7 +41,7 @@ public class Main {
 		Path inputChainList = (new File(args[0])).toPath();
 		// create new executor service with a threadpool of the required size.
 //		ExecutorService executor = Executors.newFixedThreadPool(cores);
-		ExecutorService executor = Executors.newFixedThreadPool(1);
+		ExecutorService executor = Executors.newFixedThreadPool(3);
 
 
 		try {

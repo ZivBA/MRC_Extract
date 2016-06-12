@@ -6,6 +6,7 @@ import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+
 public class MRC_Map_New {
 
 
@@ -22,7 +23,13 @@ public class MRC_Map_New {
 
 	public MRC_Map_New(String MRC_filename) {
 		System.out.print("Reading map: " + MRC_filename + "\n");
-		readMRC(MRC_filename);
+		try {
+			readMRC(MRC_filename);
+		} catch (RuntimeException e){
+			System.out.println("Problem reading MAP file: ");
+			System.out.println("Problematic file is: "+MRC_filename);
+			throw e;
+		}
 		if (MRC_filename.endsWith("piciis1.mrc") || MRC_filename.endsWith("pic_iis1_flip_ok_pixel.mrc")
 				|| MRC_filename.endsWith("pic_del_tri1_flip_ok_pixel.mrc") || MRC_filename.endsWith("E_and_H.mrc")
 				|| MRC_filename.endsWith("PolII_map_portion.mrc")) {
@@ -81,7 +88,7 @@ public class MRC_Map_New {
 				(x < xAxis[0]) |
 				(y < yAxis[0]) |
 				(z < zAxis[0])) {
-//			return -0.1*Math.sqrt(x*x+y*y+z*z);
+			//			return -0.1*Math.sqrt(x*x+y*y+z*z);
 			throw new CoordOutOfRangeException("\nIndex out of range: [" + x + "," + y + "," + z + "]\n");
 		}
 		int ix = Nx - 1;
@@ -181,10 +188,11 @@ public class MRC_Map_New {
 	/**
 	 * return actual MRC coordinates from normalized x,y,z coords.
 	 * accept int coords normalized for 'grid'
+	 *
 	 * @return array of floats.
 	 */
 	public float[] getActualCoords(int x, int y, int z) {
-		return new float[] {xAxis[x],yAxis[y],zAxis[z]};
+		return new float[]{xAxis[x], yAxis[y], zAxis[z]};
 	}
 
 

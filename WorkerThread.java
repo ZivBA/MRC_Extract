@@ -30,14 +30,11 @@ public class WorkerThread implements Runnable {
 			if (args.length == 2) {
 				myScore = new MRC_Score(args[1], args[0]);
 				char[] chains = myScore.getMyProt().getChains();
-				float[] maxValResult = ExtractMaxValue.getMaxValue(myScore.getMyMap());
-				System.out.println(Arrays.toString(maxValResult));
-				ExtractMaxValue.writeMarkerFile(myScore.getMyProt().getSource().getParent(), maxValResult);
+
 
 				for (char chain : chains){
-					myScore = new MRC_Score(args[1], args[0], String.valueOf(chain));
+					myScore = new MRC_Score(args[1], args[0], String.valueOf(chain),myScore.getMyMap());
 					myScore.requestedChain = chain;
-					myScore.getAcidDist();
 					myScore.scoreProtein();
 					myScore.calcZvalue();
 					myScore.createCSVs();
@@ -52,6 +49,25 @@ public class WorkerThread implements Runnable {
 							delete(path);
 						}
 					}
+
+					String folderPath = myScore.getMyProt().getSource().getParent() +File.separator+ "tempCSVs" +File.separator;
+					String filePrefix = myScore.getMyProt().getFileName().toUpperCase() + "_" + myScore.requestedChain;
+					String swissProtPath = "/home/zivben/IdeaProjects/Results/uniprot_sprot_10_2015.fasta";
+
+					String seqListPath = myScore.getMyProt().getSource().getParent() +File.separator + filePrefix + ".fasta";
+					//			String profileFilePath1 = folderPath + filePrefix + "_profileNoVec.txt";
+					String profileFilePath2 = folderPath + filePrefix + "_profileLatestVec.txt";
+					String profileFilePath3 = folderPath + filePrefix + "_profileNoVec_weighteBB.txt";
+					String profileWeight2 = folderPath + filePrefix + "_profileLatestVec_weightedBB_2.txt";
+					String profileWeight5 = folderPath + filePrefix + "_profileLatestVec_weightedBB_5.txt";
+					String profileWeight10 = folderPath + filePrefix + "_profileLatestVec_weightedBB_10.txt";
+
+					//			RvalAlignerCluster.runThread(swissProtPath, seqListPath, profileFilePath1);
+//					RvalAlignerCluster.runThread(swissProtPath, seqListPath, profileFilePath2);
+//					//			RvalAlignerCluster.runThread(swissProtPath, seqListPath, profileFilePath3);
+//					RvalAlignerCluster.runThread(swissProtPath, seqListPath, profileWeight2);
+//					RvalAlignerCluster.runThread(swissProtPath, seqListPath, profileWeight5);
+//					RvalAlignerCluster.runThread(swissProtPath, seqListPath, profileWeight10);
 				}
 
 
@@ -75,27 +91,27 @@ public class WorkerThread implements Runnable {
 					}
 				}
 
+				String folderPath = myScore.getMyProt().getSource().getParent() +File.separator+ "tempCSVs" +File.separator;
+				String filePrefix = myScore.getMyProt().getFileName() + "_" + myScore.requestedChain;
+				String swissProtPath = "/home/zivben/IdeaProjects/Results/uniprot_sprot_10_2015.fasta";
 
+				String seqListPath = myScore.getMyProt().getSource().getParent() +File.separator + filePrefix + ".fasta";
+				//			String profileFilePath1 = folderPath + filePrefix + "_profileNoVec.txt";
+				String profileFilePath2 = folderPath + filePrefix + "_profileLatestVec.txt";
+				String profileFilePath3 = folderPath + filePrefix + "_profileNoVec_weighteBB.txt";
+				String profileWeight2 = folderPath + filePrefix + "_profileLatestVec_weightedBB_2.txt";
+				String profileWeight5 = folderPath + filePrefix + "_profileLatestVec_weightedBB_5.txt";
+				String profileWeight10 = folderPath + filePrefix + "_profileLatestVec_weightedBB_10.txt";
+
+				//			RvalAlignerCluster.runThread(swissProtPath, seqListPath, profileFilePath1);
+				//			RvalAlignerCluster.runThread(swissProtPath, seqListPath, profileFilePath2);
+				//			RvalAlignerCluster.runThread(swissProtPath, seqListPath, profileFilePath3);
+				RvalAlignerCluster.runThread(swissProtPath, seqListPath, profileWeight2);
+				RvalAlignerCluster.runThread(swissProtPath, seqListPath, profileWeight5);
+				RvalAlignerCluster.runThread(swissProtPath, seqListPath, profileWeight10);
 			}
 
-			String folderPath = myScore.getMyProt().getSource().getParent() +File.separator+ "tempCSVs" +File.separator;
-			String filePrefix = myScore.getMyProt().getFileName() + "_" + myScore.requestedChain;
-			String swissProtPath = "/home/zivben/IdeaProjects/Results/uniprot_sprot_10_2015.fasta";
 
-			String seqListPath = folderPath + filePrefix + ".fasta";
-//			String profileFilePath1 = folderPath + filePrefix + "_profileNoVec.txt";
-			String profileFilePath2 = folderPath + filePrefix + "_profileLatestVec.txt";
-			String profileFilePath3 = folderPath + filePrefix + "_profileNoVec_weighteBB.txt";
-			String profileWeight2 = folderPath + filePrefix + "_profileLatestVec_weightedBB_2.txt";
-			String profileWeight5 = folderPath + filePrefix + "_profileLatestVec_weightedBB_5.txt";
-			String profileWeight10 = folderPath + filePrefix + "_profileLatestVec_weightedBB_10.txt";
-
-//			RvalAlignerCluster.runThread(swissProtPath, seqListPath, profileFilePath1);
-//			RvalAlignerCluster.runThread(swissProtPath, seqListPath, profileFilePath2);
-//			RvalAlignerCluster.runThread(swissProtPath, seqListPath, profileFilePath3);
-			RvalAlignerCluster.runThread(swissProtPath, seqListPath, profileWeight2);
-			RvalAlignerCluster.runThread(swissProtPath, seqListPath, profileWeight5);
-			RvalAlignerCluster.runThread(swissProtPath, seqListPath, profileWeight10);
 
 
 		} catch (IOException | MissingChainID e) {

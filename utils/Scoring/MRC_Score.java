@@ -1,6 +1,7 @@
 package utils.Scoring;
 
 import com.sun.xml.internal.ws.util.StringUtils;
+import utils.ExtractMaxValue;
 import utils.ScoreUtilities.MRC_Map_New;
 import utils.ScoreUtilities.ScoringGeneralHelpers;
 import utils.UtilExceptions.MissingChainID;
@@ -19,6 +20,8 @@ import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 import static org.apache.commons.lang3.StringUtils.substringBetween;
@@ -35,23 +38,54 @@ public class MRC_Score {
 	private double[][] proteinIntensityValueMatrix;
 	public ArrayList<String> logFile = new ArrayList<>();
 	public ArrayList<File> toDelete = new ArrayList<>();
+	DateFormat df = new SimpleDateFormat("dd/MM/yy HH:mm:ss");
 
 
 	public MRC_Score(MRC_Map_New myMap, SimpleProtein myProt) {
 		this.myMap = myMap;
 		this.myProt = myProt;
 		proteinIntensityValueMatrix = new double[20][myProt.getNumChains()];
+		exMax();
 
 	}
 
 	public MRC_Score(String mapPath, String protPath) throws IOException {
-		this(new MRC_Map_New(mapPath), new SimpleProtein(new File(protPath)));
+		this.myProt = new SimpleProtein(new File(protPath));
+		this.myMap = new MRC_Map_New(mapPath);
+		exMax();
+
+		proteinIntensityValueMatrix = new double[20][myProt.getNumChains()];
+
+
 	}
 
 	public MRC_Score(String mapPath, String protPath, String requestedChain) throws IOException {
-		this(new MRC_Map_New(mapPath), new SimpleProtein(new File(protPath), requestedChain));
+		this.myProt = new SimpleProtein(new File(protPath));
+		if (!checkExistingCSVs()){
+			this.myMap = new MRC_Map_New(mapPath);
+			exMax();
+		}
 		this.requestedChain = requestedChain.charAt(0);
+		proteinIntensityValueMatrix = new double[20][myProt.getNumChains()];
 
+	}
+
+	public MRC_Score(String mapPath, String protPath, String requestedChain, MRC_Map_New myMap) throws IOException {
+		this.myProt = new SimpleProtein(new File(protPath),requestedChain);
+		this.myMap = myMap;
+		this.requestedChain = requestedChain.charAt(0);
+		proteinIntensityValueMatrix = new double[20][myProt.getNumChains()];
+		logFile.add("Started at: "+ df.format(new Date()));
+	}
+
+	private void exMax() {
+		float[] maxValResult = ExtractMaxValue.getMaxValue(myMap);
+		System.out.println(Arrays.toString(maxValResult));
+		try {
+			ExtractMaxValue.writeMarkerFile(myProt.getSource().getParent(), maxValResult);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 
 	public MRC_Map_New getMyMap() {
@@ -96,7 +130,7 @@ public class MRC_Score {
 			logFile.add("Stripping all amino acid resiudes and setting to ALA.");
 			ProteinActions.stripAndAllALAToObject(myProt);
 			logFile.add("Iterating all acid permutations and creating SCWRL input files");
-			File scwrlOutput = ProteinActions.iterateAcids(myProt);
+			File scwrlOutput = ProteinActions.iterateAcids(myProt,requestedChain);
 
 			File chainSubFolders[] = scwrlOutput.listFiles();
 			for (File chain : chainSubFolders) {
@@ -126,16 +160,17 @@ public class MRC_Score {
 
 
 			for (SimpleProtein.ProtChain chain : myProt) {
+				String upperCaseFileName = myProt.getFileName().toUpperCase();
 				if (chain.getChainID() == requestedChain || requestedChain == '\0') {
-					File resultCSV = new File(tempCSVfolder.getAbsolutePath() + File.separator + myProt.getFileName()
+					File resultCSV = new File(tempCSVfolder.getAbsolutePath() + File.separator + upperCaseFileName
 							+ "_" + chain.getChainID() + "_resultMatrix.csv");
 
 					File backBoneIntMatrix = new File(
-							tempCSVfolder.getAbsolutePath() + File.separator + myProt.getFileName()
+							tempCSVfolder.getAbsolutePath() + File.separator + upperCaseFileName
 									+ "_" + chain.getChainID() + "_BBresultMatrix.csv");
 
 					File correctPositions = new File(
-							tempCSVfolder.getAbsolutePath() + File.separator + myProt.getFileName()
+							tempCSVfolder.getAbsolutePath() + File.separator + upperCaseFileName
 									+ "_" + chain.getChainID() + "_originalPositions.csv");
 
 					double[][] temp;
@@ -251,8 +286,16 @@ public class MRC_Score {
 	}
 
 	private void scoreSingleScwrl(SimpleProtein tempProt) throws InvalidPropertiesFormatException, MissingChainID {
-
-		int testResiduePosition = Integer.valueOf(substringBetween(tempProt.getFileName(), "_res_", "_"));
+		int testResiduePosition = 0;
+		try {
+			 testResiduePosition = Integer.valueOf(substringBetween(tempProt.getFileName(), "_res_", "_to"));
+		} catch (NumberFormatException e){
+			System.err.println("Problem with some SCWRL file?");
+			System.out.println("Problematic file is:");
+			System.out.println(tempProt.getSource().getAbsolutePath());
+			System.out.println("also this is the filename analized: "+tempProt.getFileName());
+			throw e;
+		}
 		int testResidueIndex = acidToIndex(
 				substringBetween(tempProt.getFileName(), "_to_", "_SCWRLed"));
 
@@ -308,10 +351,13 @@ public class MRC_Score {
 	public void calcZvalue() throws InvalidPropertiesFormatException {
 
 		for (SimpleProtein.ProtChain chain : myProt) {
-			logFile.add("Calculating Z-Values for chain: " + chain.getChainID());
-			calcMedian(chain);
-			zValueHelper(chain);
-			//			zValueHelperWithBackBone(chain);
+
+			if (chain.getChainID() == requestedChain) {
+				logFile.add("Calculating Z-Values for chain: " + chain.getChainID());
+				calcMedian(chain);
+				zValueHelper(chain);
+				//			zValueHelperWithBackBone(chain);
+			}
 		}
 
 
@@ -594,85 +640,86 @@ public class MRC_Score {
 	public void createCSVs() throws IOException {
 
 		logFile.add("Creating CSV Files");
-		File tempCSVfolder = ScoringGeneralHelpers.makeFolder(new File(myProt.getSource().getParent() + File
-				.separator + "tempCSVs"));
+		File tempCSVfolder = ScoringGeneralHelpers.makeFolder(new File(myProt.getSource().getParent() + File.separator + "tempCSVs"));
+		String upperCaseFileName = myProt.getFileName().toUpperCase();
+		SimpleProtein.ProtChain chain = myProt.getChain(requestedChain);
 
 
-		for (SimpleProtein.ProtChain chain : myProt) {
-
-			// run zvaluematrix through de-negativeation vector (try to make all values positive)
+		// run zvaluematrix through de-negativeation vector (try to make all values positive)
 
 
-			File resultCSV = new File(tempCSVfolder.getAbsolutePath() + File.separator + myProt.getFileName()
-					+ "_" + chain.getChainID() + "_resultMatrix.csv");
+		File resultCSV = new File(tempCSVfolder.getAbsolutePath() + File.separator + upperCaseFileName
+				+ "_" + chain.getChainID() + "_resultMatrix.csv");
 
-			File backBoneIntMatrix = new File(tempCSVfolder.getAbsolutePath() + File.separator + myProt.getFileName()
-					+ "_" + chain.getChainID() + "_BBresultMatrix.csv");
+		File backBoneIntMatrix = new File(tempCSVfolder.getAbsolutePath() + File.separator + upperCaseFileName
+				+ "_" + chain.getChainID() + "_BBresultMatrix.csv");
 
-			File zscoreCSV = new File(tempCSVfolder.getAbsolutePath() + File.separator + myProt.getFileName()
-					+ "_" + chain.getChainID() + "_allZscore.csv");
+		File zscoreCSV = new File(tempCSVfolder.getAbsolutePath() + File.separator + upperCaseFileName
+				+ "_" + chain.getChainID() + "_allZscore.csv");
 
-			File zscoreBBCSV = new File(tempCSVfolder.getAbsolutePath() + File.separator + myProt.getFileName()
-					+ "_" + chain.getChainID() + "_allZscoreWtBB.csv");
-			File zscoreOnlyFalseCSV = new File(tempCSVfolder.getAbsolutePath() + File.separator + myProt.getFileName()
-					+ "_" + chain.getChainID() + "_onlyFalseZscore.csv");
+		File zscoreBBCSV = new File(tempCSVfolder.getAbsolutePath() + File.separator + upperCaseFileName
+				+ "_" + chain.getChainID() + "_allZscoreWtBB.csv");
+		File zscoreOnlyFalseCSV = new File(tempCSVfolder.getAbsolutePath() + File.separator + upperCaseFileName
+				+ "_" + chain.getChainID() + "_onlyFalseZscore.csv");
 
-			File trueMedian = new File(tempCSVfolder.getAbsolutePath() + File.separator + myProt.getFileName()
-					+ "_" + chain.getChainID() + "_trueMedian.csv");
+		File trueMedian = new File(tempCSVfolder.getAbsolutePath() + File.separator + upperCaseFileName
+				+ "_" + chain.getChainID() + "_trueMedian.csv");
 
-			File falseMedian = new File(tempCSVfolder.getAbsolutePath() + File.separator + myProt.getFileName()
-					+ "_" + chain.getChainID() + "_falseMedian.csv");
+		File falseMedian = new File(tempCSVfolder.getAbsolutePath() + File.separator + upperCaseFileName
+				+ "_" + chain.getChainID() + "_falseMedian.csv");
 
-			File signalMaybe = new File(tempCSVfolder.getAbsolutePath() + File.separator + myProt.getFileName()
-					+ "_" + chain.getChainID() + "_signalMaybe.csv");
+		File signalMaybe = new File(tempCSVfolder.getAbsolutePath() + File.separator + upperCaseFileName
+				+ "_" + chain.getChainID() + "_signalMaybe.csv");
 
-			File combinedMatrix = new File(tempCSVfolder.getAbsolutePath() + File.separator + myProt.getFileName()
-					+ "_" + chain.getChainID() + "_profileNoVec.txt");
-			File combinedMatrixLatestVec = new File(tempCSVfolder.getAbsolutePath() + File.separator + myProt
-					.getFileName() + "_" + chain.getChainID() + "_profileLatestVec.txt");
-
-
-			File zscoreCorrect = new File(
-					tempCSVfolder.getAbsolutePath() + File.separator + myProt.getFileName() + "_" + chain
-							.getChainID() + "_zscoreCorrect.csv");
-
-			File correctPositions = new File(
-					tempCSVfolder.getAbsolutePath() + File.separator + myProt.getFileName() + "_" + chain
-							.getChainID() +
-							"_originalPositions.csv");
-
-			File backBoneZscore = new File(
-					tempCSVfolder.getAbsolutePath() + File.separator + myProt.getFileName() + "_" + chain
-							.getChainID() + "_backboneZscore.csv");
+		File combinedMatrix = new File(tempCSVfolder.getAbsolutePath() + File.separator + upperCaseFileName
+				+ "_" + chain.getChainID() + "_profileNoVec.txt");
+		File combinedMatrixLatestVec = new File(tempCSVfolder.getAbsolutePath() + File.separator + upperCaseFileName
+				+ "_" + chain.getChainID() + "_profileLatestVec.txt");
 
 
-			File logFileTarget = new File(
-					tempCSVfolder.getAbsolutePath() + File.separator + myProt.getFileName() + "_" +
-							chain.getChainID() + "_log.txt");
+		File zscoreCorrect = new File(
+				tempCSVfolder.getAbsolutePath() + File.separator + upperCaseFileName + "_" + chain
+						.getChainID() + "_zscoreCorrect.csv");
 
-			writeMatrixToCSV(trueMedian, chain.medianTrue);
-			writeMatrixToCSV(falseMedian, chain.medianFalse);
-			writeMatrixToCSV(signalMaybe, chain.signalMaybe);
-			wirteLogToTxtFile(logFileTarget, logFile);
+		File correctPositions = new File(
+				tempCSVfolder.getAbsolutePath() + File.separator + upperCaseFileName + "_" + chain
+						.getChainID() +
+						"_originalPositions.csv");
 
-			// generate profile files per vector
-			//			writeNewMatrixFormat(combinedMatrixVec4, chain, ScoringGeneralHelpers.vector4);
-			//			writeNewMatrixFormat(combinedMatrixVec3, chain, ScoringGeneralHelpers.vector3);
-			writeNewMatrixFormat(combinedMatrixLatestVec, chain, ScoringGeneralHelpers.latestVector, 2);
-			writeNewMatrixFormat(combinedMatrixLatestVec, chain, ScoringGeneralHelpers.latestVector, 5);
-			writeNewMatrixFormat(combinedMatrixLatestVec, chain, ScoringGeneralHelpers.latestVector, 10);
-			//			writeNewMatrixFormat(combinedMatrix, chain, ScoringGeneralHelpers.normalVector);
+		File backBoneZscore = new File(
+				tempCSVfolder.getAbsolutePath() + File.separator + upperCaseFileName + "_" + chain
+						.getChainID() + "_backboneZscore.csv");
 
-			writeMatrixToCSV(resultCSV, chain.resIntensityValueMatrix);
-			writeMatrixToCSV(backBoneIntMatrix, chain.backBoneIntensityValueMatrix);
-			writeFalseZvalueResults(zscoreOnlyFalseCSV, chain);
-			writeMatrixToCSV(zscoreCSV, chain.allZvalueMatrix);
-			writeMatrixToCSV(backBoneZscore, chain.backBoneZvalue);
-			writeMatrixToCSV(correctPositions, chain.originalPositions);
-			writeTrueValueCSVs(zscoreCorrect, chain);
-			writeBBzScoreToCSV(zscoreBBCSV, chain, 5);
 
-		}
+		File logFileTarget = new File(
+				tempCSVfolder.getAbsolutePath() + File.separator + upperCaseFileName + "_" +
+						chain.getChainID() + "_log.txt");
+
+		writeMatrixToCSV(trueMedian, chain.medianTrue);
+		writeMatrixToCSV(falseMedian, chain.medianFalse);
+		writeMatrixToCSV(signalMaybe, chain.signalMaybe);
+
+		// generate profile files per vector
+		//			writeNewMatrixFormat(combinedMatrixVec4, chain, ScoringGeneralHelpers.vector4);
+		//			writeNewMatrixFormat(combinedMatrixVec3, chain, ScoringGeneralHelpers.vector3);
+		writeNewMatrixFormat(combinedMatrixLatestVec, chain, ScoringGeneralHelpers.latestVector, 2);
+		writeNewMatrixFormat(combinedMatrixLatestVec, chain, ScoringGeneralHelpers.latestVector, 5);
+		writeNewMatrixFormat(combinedMatrixLatestVec, chain, ScoringGeneralHelpers.latestVector, 10);
+		//			writeNewMatrixFormat(combinedMatrix, chain, ScoringGeneralHelpers.normalVector);
+
+		writeMatrixToCSV(resultCSV, chain.resIntensityValueMatrix);
+		writeMatrixToCSV(backBoneIntMatrix, chain.backBoneIntensityValueMatrix);
+		writeFalseZvalueResults(zscoreOnlyFalseCSV, chain);
+		writeMatrixToCSV(zscoreCSV, chain.allZvalueMatrix);
+		writeMatrixToCSV(backBoneZscore, chain.backBoneZvalue);
+		writeMatrixToCSV(correctPositions, chain.originalPositions);
+		writeTrueValueCSVs(zscoreCorrect, chain);
+		writeBBzScoreToCSV(zscoreBBCSV, chain, 5);
+
+		logFile.add("Finished at: " + df.format(new Date()));
+		wirteLogToTxtFile(logFileTarget, logFile);
+
+
 
 
 	}

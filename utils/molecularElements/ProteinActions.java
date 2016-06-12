@@ -62,40 +62,39 @@ public class ProteinActions {
 		writer.close();
 	}
 
-	public static File iterateAcids(SimpleProtein sourceProtein) throws IOException {
+	public static File iterateAcids(SimpleProtein sourceProtein, char requestedChain) throws IOException {
 
 
 		File outputFolder = makeSubFolderAt(sourceProtein.getSource(), "_scwrlFiles");
+		SimpleProtein.ProtChain chain = sourceProtein.getChain(requestedChain);
 
-		for (SimpleProtein.ProtChain chain : sourceProtein) {
-			File ChainFolder = makeSubFolderAt(outputFolder, String.valueOf(chain.getChainID()));
-			for (AminoAcid aminoAcid : chain) {
+		File ChainFolder = makeSubFolderAt(outputFolder, String.valueOf(chain.getChainID()));
+		for (AminoAcid aminoAcid : chain) {
 
-				for (String newAcid : aAcids) {
-					aminoAcid.substituteWith(newAcid);
+			for (String newAcid : aAcids) {
+				aminoAcid.substituteWith(newAcid);
 
-					// write new processed file
-					File fileWithNewRes = new File(ChainFolder.getAbsolutePath() + File.separator + sourceProtein
-							.getFileName() + "_res_" + aminoAcid.getPosition() + "_to_" + newAcid +
-							PDB_EXTENSION);
+				// write new processed file
+				File fileWithNewRes = new File(ChainFolder.getAbsolutePath() + File.separator + sourceProtein
+						.getFileName() + "_res_" + aminoAcid.getPosition() + "_to_" + newAcid +
+						PDB_EXTENSION);
 
-//					if (debug) {
-//						System.out.println("Generating permutation: " + fileWithNewRes.getName());
-//					}
+				//					if (debug) {
+				//						System.out.println("Generating permutation: " + fileWithNewRes.getName());
+				//					}
 
-					if (!fileWithNewRes.exists() || fileWithNewRes.length() == 0) {
-						sourceProtein.writePDB(fileWithNewRes);
-					}
-
-
-					//reset to ALA
-					aminoAcid.substituteWith("ALA");
-					aminoAcid.strip();
-
+				if (!fileWithNewRes.exists() || fileWithNewRes.length() == 0) {
+					sourceProtein.writePDB(fileWithNewRes);
 				}
 
 
+				//reset to ALA
+				aminoAcid.substituteWith("ALA");
+				aminoAcid.strip();
+
 			}
+
+
 		}
 
 
@@ -112,7 +111,7 @@ public class ProteinActions {
 	 * @param outputFolder output folder
 	 * @throws IOException
 	 */
-	public static void iterateAllAcidsToFile(SimpleProtein prot, File outputFolder)  {
+	public static void iterateAllAcidsToFile(SimpleProtein prot, File outputFolder) {
 
 		// go over all AA in the protein
 		for (SimpleProtein.ProtChain chain : prot) {
@@ -130,7 +129,8 @@ public class ProteinActions {
 						prot.writePDB(fileWithNewRes);
 					} catch (IOException e) {
 						System.out.println("Error writing PDB file for the file: \n" + fileWithNewRes.getAbsolutePath()
-						+ "\n acid to substitute was: " + acid + " and the requested output folder was: \n"+ outputFolder.getAbsolutePath());
+								+ "\n acid to substitute was: " + acid + " and the requested output folder was: \n" + outputFolder.getAbsolutePath
+								());
 					}
 
 					//reset to ALA
@@ -165,7 +165,7 @@ public class ProteinActions {
 			return 1;
 			//TODO - fix this 21st amino acid thing.
 		} else
-		throw new InvalidPropertiesFormatException("Bad AminoAcid Name: " + name);
+			throw new InvalidPropertiesFormatException("Bad AminoAcid Name: " + name);
 
 
 	}
@@ -184,7 +184,6 @@ public class ProteinActions {
 			//TODO - fix this 21st amino acid thing.
 		} else
 			throw new InvalidPropertiesFormatException("Bad AminoAcid Name: " + name);
-
 
 
 	}

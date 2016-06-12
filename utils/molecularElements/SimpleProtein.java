@@ -126,20 +126,30 @@ public class SimpleProtein implements Iterable<SimpleProtein.ProtChain> {
 	 */
 	public void writePDB(File destination) throws IOException {
 		FileWriter FW = new FileWriter(destination);
-
+		List<String> buffer = new LinkedList<>();
 		// write structural atoms
 		for (ProtChain chain : protChains) {
 			for (AminoAcid acid : chain) {
 				for (SimpleAtom atom : acid) {
-					FW.write(atom.getOriginalString() + "\n");
+					buffer.add(atom.getOriginalString() + "\n");
+					if (buffer.size()>=100){
+						FW.write(String.join("",buffer));
+						buffer.clear();
+					}
+
 				}
 			}
 
 		}
+		FW.write(buffer.toString());
+		buffer.clear();
 		//write HeteroAtoms and footer tags.
 		for (String line : hetAtmAndFooter) {
-			FW.write(line);
+			buffer.add(line);
+
 		}
+		FW.write(String.join("", buffer));
+		buffer.clear();
 		FW.close();
 	}
 

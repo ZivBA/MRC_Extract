@@ -1,6 +1,5 @@
 package utils.Scoring;
 
-import com.sun.xml.internal.ws.util.StringUtils;
 import utils.ExtractMaxValue;
 import utils.ScoreUtilities.MRC_Map_New;
 import utils.ScoreUtilities.ScoringGeneralHelpers;
@@ -31,14 +30,14 @@ import static utils.molecularElements.ProteinActions.acidToIndex;
  * Created by zivben on 09/08/15.
  */
 public class MRC_Score {
-	List<Integer[]> originalPos;
+	private List<Integer[]> originalPos;
 	private MRC_Map_New myMap;
 	private SimpleProtein myProt;
 	public char requestedChain;
 	private double[][] proteinIntensityValueMatrix;
 	public ArrayList<String> logFile = new ArrayList<>();
 	public ArrayList<File> toDelete = new ArrayList<>();
-	DateFormat df = new SimpleDateFormat("dd/MM/yy HH:mm:ss");
+	private DateFormat df = new SimpleDateFormat("dd/MM/yy HH:mm:ss");
 
 
 	public MRC_Score(MRC_Map_New myMap, SimpleProtein myProt) {
@@ -883,7 +882,7 @@ public class MRC_Score {
 		return myProt;
 	}
 
-	public int[][] getAcidDist() throws InvalidPropertiesFormatException {
+	public int[] getAcidDist() throws InvalidPropertiesFormatException {
 		return (myProt.acidDist != null ? myProt.acidDist : myProt.calcAcidDist());
 	}
 }

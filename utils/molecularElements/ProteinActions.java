@@ -70,7 +70,6 @@ public class ProteinActions {
 
 		File ChainFolder = makeSubFolderAt(outputFolder, String.valueOf(chain.getChainID()));
 		for (AminoAcid aminoAcid : chain) {
-
 			for (String newAcid : aAcids) {
 				aminoAcid.substituteWith(newAcid);
 
@@ -164,6 +163,8 @@ public class ProteinActions {
 		if (name.equals("SEC") || name.trim().equals("U")) {
 			return 1;
 			//TODO - fix this 21st amino acid thing.
+		} else if (name.equals("UNK")) {
+			return 'A';
 		} else
 			throw new InvalidPropertiesFormatException("Bad AminoAcid Name: " + name);
 

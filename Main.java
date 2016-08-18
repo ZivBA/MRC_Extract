@@ -48,7 +48,7 @@ public class Main {
 			// seperate argument file into a list of valid input chains and create new worker thread per chain.
 			List<String> chainsToProcess = Files.readAllLines(inputChainList, Charset.defaultCharset());
 			for (String chain : chainsToProcess) {
-				if (!chain.startsWith("###")) {
+				if (!chain.startsWith("###") && chain.length() >3) {
 					String[] tempArgs = chain.split(" ");
 					Runnable worker = new WorkerThread(tempArgs);
 					executor.execute(worker);

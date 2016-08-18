@@ -38,7 +38,7 @@ public class WorkerThread implements Runnable {
 					myScore.scoreProtein();
 					myScore.calcZvalue();
 					myScore.createCSVs();
-					System.out.println("Done with: " + args[0]);
+					System.out.println("Done with: " + args[0] + " chain: " + myScore.requestedChain);
 					if (ScoringGeneralHelpers.debug) {
 						for (String line : myScore.logFile) {
 							System.out.println(line);

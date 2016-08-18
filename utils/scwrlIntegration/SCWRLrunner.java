@@ -24,7 +24,11 @@ public class SCWRLrunner {
 	public String[] runScwrl(File input, File output) throws IOException {
 
 		if (!output.isFile()) {
-			output.createNewFile();
+			try {
+				output.createNewFile();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 			output.setWritable(true);
 		}
 

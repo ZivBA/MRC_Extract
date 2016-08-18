@@ -26,7 +26,7 @@ public class SimpleProtein implements Iterable<SimpleProtein.ProtChain> {
 	private List<ProtChain> protChains; // list of the seperate AminoAcid chains
 	private List<String> hetAtmAndFooter;   // array of the remaining HeteroAtoms + footer tags.
 	private int numChains;
-	public int[][] acidDist;
+	public int[] acidDist;
 	private char[] chains;
 
 	/**
@@ -37,6 +37,14 @@ public class SimpleProtein implements Iterable<SimpleProtein.ProtChain> {
 	 * @throws IOException if an error occurs while reading the file.
 	 */
 	public SimpleProtein(File pdbFile) throws IOException {
+		if (!pdbFile.isFile()){
+			System.out.println("******************** ERROR - ERROR ********************");
+			System.out.println("Input PDB file is corrupt/missing/fudged up....");
+			System.out.println("You should probably go ahead and check at: ");
+			System.out.println(pdbFile.getAbsolutePath());
+			System.out.println("******************** \\ERROR - \\ERROR ********************");
+			throw new IOException("Missing input file");
+		}
 		constHelper(pdbFile);
 	}
 
@@ -45,11 +53,13 @@ public class SimpleProtein implements Iterable<SimpleProtein.ProtChain> {
 	 * chain in a ProtChain object. each chain ends with a TER line. </br>
 	 * hetero atoms, master tag and end tag are all injected into the hetAtmAndFooter String array without
 	 * processing.
+	 *
 	 * @param pdbFile File Object pointing to a PDB file.
 	 * @throws IOException if an error occurs while reading the file.
 	 */
 	private void constHelper(File pdbFile) throws IOException {
 		source = pdbFile;
+		SCWRLactions.scwrlRunOnce(pdbFile,pdbFile);
 		fileName = pdbFile.getName().substring(0, pdbFile.getName().indexOf(PDB_EXTENSION));
 
 		protChains = new ArrayList<>();
@@ -72,11 +82,13 @@ public class SimpleProtein implements Iterable<SimpleProtein.ProtChain> {
 			if (lineInFile.startsWith("ATOM")) {
 
 				// only process the requested chain if applicable. if requested chain is null, process all.
-				try{if (requestedChain == '\0' ^ requestedChain == lineInFile.charAt(CHAIN_ID)) {
-					chains.get(chainCounter).add(lineInFile);
-				}} catch (StringIndexOutOfBoundsException e){
-					System.out.println("string index OOB exception at line:\n"+lineInFile);
-					System.out.println("from file: "+pdbFile.getName());
+				try {
+					if (requestedChain == '\0' ^ requestedChain == lineInFile.charAt(CHAIN_ID)) {
+						chains.get(chainCounter).add(lineInFile);
+					}
+				} catch (StringIndexOutOfBoundsException e) {
+					System.out.println("string index OOB exception at line:\n" + lineInFile);
+					System.out.println("from file: " + pdbFile.getName());
 				}
 			} else if (lineInFile.startsWith("TER")) {
 				chains.get(chainCounter).add(lineInFile);
@@ -131,9 +143,14 @@ public class SimpleProtein implements Iterable<SimpleProtein.ProtChain> {
 		for (ProtChain chain : protChains) {
 			for (AminoAcid acid : chain) {
 				for (SimpleAtom atom : acid) {
-					buffer.add(atom.getOriginalString() + "\n");
-					if (buffer.size()>=100){
-						FW.write(String.join("",buffer));
+					try {
+						buffer.add(atom.getOriginalString() + "\n");
+					} catch (Exception e) {
+						System.out.println("Error adding atom string to buffer. for destination: "+ destination.getAbsolutePath());
+						System.out.println("From residue : "+acid.getName()+ " number "+ acid.getSeqNum() + " in chain: "+chain.getChainID());
+					}
+					if (buffer.size() >= 100) {
+						FW.write(String.join("", buffer));
 						buffer.clear();
 					}
 
@@ -153,36 +170,12 @@ public class SimpleProtein implements Iterable<SimpleProtein.ProtChain> {
 		FW.close();
 	}
 
-//	public void createPermutations() throws IOException {
-//		processingFolder = ScoringGeneralHelpers.makeSubFolderAt(source, "_temp");
-//		ProteinActions.iterateAllAcidsToFile(this, processingFolder);
-//		SCWRLactions.genSCWRLforFolder(processingFolder);
-//
-//	}
-//
-//	public void createPermutations(File tempFolder) throws IOException {
-//		this.processingFolder = tempFolder;
-//		makeFolder(processingFolder);
-//
-//		ProteinActions.iterateAllAcidsToFile(this, processingFolder);
-//		SCWRLactions.genSCWRLforFolder(processingFolder);
-//
-//
-//	}
-//
-//	public File getProcessingFolder() {
-//		return processingFolder;
-//	}
-//
-//	public void setProcessingFolder(File processingFolder) {
-//		this.processingFolder = processingFolder;
-//	}
+
 
 	@Override
 	public Iterator<ProtChain> iterator() {
 		return protChains.iterator();
 	}
-
 
 
 	public int getLegnth() {
@@ -196,26 +189,26 @@ public class SimpleProtein implements Iterable<SimpleProtein.ProtChain> {
 
 	/**
 	 * save the current structure of the protein before processing begins.
+	 *
 	 * @throws InvalidPropertiesFormatException
 	 */
 	public void saveOriginalPositions() throws InvalidPropertiesFormatException {
 
-		for (ProtChain chain : protChains){
+		for (ProtChain chain : protChains) {
 			List<Integer> posList = new LinkedList<>();
-			for (AminoAcid res : chain.residues){
+			for (AminoAcid res : chain.residues) {
 				posList.add(res.getAcidGlobalIndex());
 			}
-			chain.originalPositions = posList.toArray( new Integer[posList.size()]);
+			chain.originalPositions = posList.toArray(new Integer[posList.size()]);
 			protOriginalPositions.add(chain.originalPositions);
 		}
-
 
 
 	}
 
 	public ProtChain getChain(char requestedChainID) {
-		for (ProtChain chain : this){
-			if (chain.getChainID() == requestedChainID){
+		for (ProtChain chain : this) {
+			if (chain.getChainID() == requestedChainID) {
 				return chain;
 			}
 		}
@@ -226,13 +219,14 @@ public class SimpleProtein implements Iterable<SimpleProtein.ProtChain> {
 		return numChains;
 	}
 
-	public int[][] calcAcidDist() throws InvalidPropertiesFormatException {
-		acidDist = new int[protOriginalPositions.size()][20];
-		Arrays.fill(acidDist,0);
-		int i=0;
-		for (ProtChain chain : protChains){
-			for (AminoAcid acid : chain){
-				acidDist[i][acid.getAcidGlobalIndex()] += 1;
+	public int[] calcAcidDist() throws InvalidPropertiesFormatException {
+		acidDist = new int[20];
+		Arrays.fill(acidDist, 0);
+		int i = 0;
+		for (ProtChain chain : protChains) {
+			for (AminoAcid acid : chain) {
+				acidDist[acid.getAcidGlobalIndex()] += 1;
+				i++;
 			}
 		}
 		return acidDist;
@@ -240,8 +234,8 @@ public class SimpleProtein implements Iterable<SimpleProtein.ProtChain> {
 
 	public char[] getChains() {
 		char[] chains = new char[protChains.size()];
-		int count =0;
-		for (ProtChain chain : protChains){
+		int count = 0;
+		for (ProtChain chain : protChains) {
 			chains[count] = chain.getChainID();
 			count++;
 		}
@@ -314,15 +308,16 @@ public class SimpleProtein implements Iterable<SimpleProtein.ProtChain> {
 			backBoneZvalue = new double[residues.size()];
 
 			Collections.sort(residues, new ResidueComparator());
-			for (int i=0; i<residues.size(); i++){
+			for (int i = 0; i < residues.size(); i++) {
 				residues.get(i).setPosition(i);
 			}
 
 		}
 
-		public int getAcidSequenceID(int position){
+		public int getAcidSequenceID(int position) {
 			return residues.get(position).getSeqNum();
 		}
+
 		public char getChainID() {
 			return chainID;
 		}
@@ -341,9 +336,10 @@ public class SimpleProtein implements Iterable<SimpleProtein.ProtChain> {
 		}
 
 		public char getSingleLetter(int j) throws InvalidPropertiesFormatException {
-			return  residues.get(j).getSingleLetter();
+			return residues.get(j).getSingleLetter();
 		}
 	}
+
 	public class ResidueComparator implements Comparator<AminoAcid> {
 
 		@Override

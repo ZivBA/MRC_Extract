@@ -1,4 +1,5 @@
 import utils.ExtractMaxValue;
+import utils.ScoreUtilities.ScoringGeneralHelpers;
 import utils.Scoring.MRC_Score;
 import utils.UtilExceptions.MissingChainID;
 import utils.molecularElements.SimpleProtein;
@@ -29,10 +30,14 @@ public class Main {
 		// How many threads to run in parrallel (number of available threads multiplied by fraction wanted)
 		int cores = (int) Math.ceil(Runtime.getRuntime().availableProcessors() *0.25);
 //		int cores = 1;
+		System.out.println("Usage: java -jar <jarfile> <argumentFile> <cores> <SCWRL> <swissProtPath>");
 		if (args.length > 1) {
 
 			try {
 				cores = Integer.parseInt(args[1]);
+				ScoringGeneralHelpers.SCWRL_PATH = args[2];
+				WorkerThread.swissProtPath = args[3];
+				
 			} catch (NumberFormatException e) {
 				System.err.println("Number of cores: " + args[1] + " must be an integer.");
 				System.exit(1);
@@ -41,7 +46,7 @@ public class Main {
 		Path inputChainList = (new File(args[0])).toPath();
 		// create new executor service with a threadpool of the required size.
 //		ExecutorService executor = Executors.newFixedThreadPool(cores);
-		ExecutorService executor = Executors.newFixedThreadPool(3);
+		ExecutorService executor = Executors.newFixedThreadPool(4);
 
 
 		try {

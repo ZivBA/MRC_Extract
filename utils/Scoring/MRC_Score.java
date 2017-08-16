@@ -44,14 +44,21 @@ public class MRC_Score {
 		this.myMap = myMap;
 		this.myProt = myProt;
 		proteinIntensityValueMatrix = new double[20][myProt.getNumChains()];
-		exMax();
+		
+//		exMax();
 
 	}
 
 	public MRC_Score(String mapPath, String protPath) throws IOException {
+//		System.out.println("Read PDB");
 		this.myProt = new SimpleProtein(new File(protPath));
-		this.myMap = new MRC_Map_New(mapPath);
-		exMax();
+		if (!checkExistingCSVs()){
+			this.myMap = new MRC_Map_New(mapPath);
+			File pdbFile = new File(protPath);
+			SCWRLactions.scwrlRunOnce(pdbFile,pdbFile);
+			this.myProt = new SimpleProtein(new File(protPath));
+		}
+//		exMax();
 
 		proteinIntensityValueMatrix = new double[20][myProt.getNumChains()];
 
@@ -59,20 +66,24 @@ public class MRC_Score {
 	}
 
 	public MRC_Score(String mapPath, String protPath, String requestedChain) throws IOException {
+//		System.out.println("Read PDB");
 		this.myProt = new SimpleProtein(new File(protPath));
 		if (!checkExistingCSVs()){
 			this.myMap = new MRC_Map_New(mapPath);
-			exMax();
+			File pdbFile = new File(protPath);
+			SCWRLactions.scwrlRunOnce(pdbFile,pdbFile);
+			this.myProt = new SimpleProtein(new File(protPath));
 		}
 		this.requestedChain = requestedChain.charAt(0);
 		proteinIntensityValueMatrix = new double[20][myProt.getNumChains()];
 
 	}
 
-	public MRC_Score(String mapPath, String protPath, String requestedChain, MRC_Map_New myMap) throws IOException {
-		this.myProt = new SimpleProtein(new File(protPath),requestedChain);
+	public MRC_Score(SimpleProtein myProt, String requestedChain, MRC_Map_New myMap) throws IOException {
+		this.myProt = myProt;
 		this.myMap = myMap;
-		this.requestedChain = requestedChain.charAt(0);
+		
+		this.requestedChain = requestedChain.trim().charAt(0);
 		proteinIntensityValueMatrix = new double[20][myProt.getNumChains()];
 		logFile.add("Started at: "+ df.format(new Date()));
 	}
@@ -122,9 +133,9 @@ public class MRC_Score {
 		if (!checkExistingCSVs()) {
 
 			logFile.add("Starting protein scoring, saving original positions.");
-			myProt.saveOriginalPositions();
+			
 			originalPos = myProt.getOriginalPositions();
-
+			SimpleProtein backup = myProt;
 
 			logFile.add("Stripping all amino acid resiudes and setting to ALA.");
 			ProteinActions.stripAndAllALAToObject(myProt);
@@ -142,7 +153,7 @@ public class MRC_Score {
 					}
 				}
 			}
-
+			myProt = backup;
 			processSCWRLfolder(scwrlOutput, requestedChain);
 
 
@@ -195,17 +206,15 @@ public class MRC_Score {
 						}
 					}
 				}
-				return true;
+//				System.out.println("all good with existing CSVs");
+			
 			}
-
+			return true;
 		} catch (Exception e) {
 			System.out.println("Existing CSVs not found or malformed, processing from scratch.");
-			;
 			return false;
 		}
-
-
-		return false;
+		
 	}
 
 	private void processSCWRLfolder(File processingFolder, char requestedChain) throws IOException, MissingChainID {
@@ -347,14 +356,14 @@ public class MRC_Score {
 		return atom.getAtomScore();
 	}
 
-	public void calcZvalue() throws InvalidPropertiesFormatException {
+	public void calcZvalue(int weight) throws InvalidPropertiesFormatException {
 
 		for (SimpleProtein.ProtChain chain : myProt) {
 
 			if (chain.getChainID() == requestedChain) {
 				logFile.add("Calculating Z-Values for chain: " + chain.getChainID());
-				calcMedian(chain);
-				zValueHelper(chain);
+				calcMedian(chain, weight);
+				zValueHelper(chain, weight);
 				//			zValueHelperWithBackBone(chain);
 			}
 		}
@@ -362,7 +371,7 @@ public class MRC_Score {
 
 	}
 
-	private void calcMedian(SimpleProtein.ProtChain chain) {
+	private void calcMedian(SimpleProtein.ProtChain chain, int weight) {
 		List<List<Double>> falseValuesList = new LinkedList<>();
 		List<List<Double>> trueValuesList = new LinkedList<>();
 		List<List<Double>> allValuesList = new LinkedList<>();
@@ -372,13 +381,14 @@ public class MRC_Score {
 			trueValuesList.add(new LinkedList<Double>());
 			allValuesList.add(new LinkedList<Double>());
 			for (int j = 0; j < chain.resIntensityValueMatrix[i].length; j++) {
+				double tmpScore = chain.resIntensityValueMatrix[i][j] + (chain.backBoneIntensityValueMatrix[i][j]*weight);
 				if (chain.originalPositions[j] != i) {
-					falseValuesList.get(i).add(chain.resIntensityValueMatrix[i][j]);
-					allValuesList.get(i).add(chain.resIntensityValueMatrix[i][j]);
+					falseValuesList.get(i).add(tmpScore);
 				} else {
-					trueValuesList.get(i).add(chain.resIntensityValueMatrix[i][j]);
-					allValuesList.get(i).add(chain.resIntensityValueMatrix[i][j]);
+					trueValuesList.get(i).add(tmpScore);
 				}
+				allValuesList.get(i).add(tmpScore);
+				
 			}
 			Collections.sort(falseValuesList.get(i));
 			Collections.sort(trueValuesList.get(i));
@@ -402,6 +412,7 @@ public class MRC_Score {
 			}
 		}
 
+	
 		for (int i = 0; i < allValuesList.size(); i++) {
 			if (allValuesList.get(i).size() == 0) {
 				allValuesMedian[i] = 0;
@@ -441,73 +452,75 @@ public class MRC_Score {
 	 * calc zValue per position/AA combination. only for residue atoms, no BB
 	 *
 	 * @param chain
+	 * @param weight
 	 */
-	private void zValueHelper(SimpleProtein.ProtChain chain) {
+	private void zValueHelper(SimpleProtein.ProtChain chain, int weight) {
 		double tempAvg[] = new double[20];
 		double tempStD[] = new double[20];
 		chain.allZvalueMatrix = new double[chain.resIntensityValueMatrix.length][chain.resIntensityValueMatrix[0]
 				.length];
 		chain.backBoneZvalueMatrix = new double[chain.resIntensityValueMatrix.length][chain.resIntensityValueMatrix[0]
 				.length];
-
-		//*************************************
-		// redo all for backbone, just in case.
-		//*************************************
-
-
-		for (int i = 0; i < chain.backBoneIntensityValueMatrix.length; i++) {
-			for (int j = 0; j < chain.backBoneIntensityValueMatrix[i].length; j++) {
-				tempAvg[i] += chain.backBoneIntensityValueMatrix[i][j];
-			}
-			tempAvg[i] = tempAvg[i] / chain.backBoneIntensityValueMatrix[i].length;
-
-			//calc standard deviation for each column
-			for (int j = 0; j < chain.backBoneIntensityValueMatrix[i].length; j++) {
-				tempStD[i] += ((chain.backBoneIntensityValueMatrix[i][j] - tempAvg[i]) * (chain.backBoneIntensityValueMatrix[i][j] - tempAvg[i]));
-			}
-
-			tempStD[i] = (double) Math.round((Math.sqrt(tempStD[i] / chain.backBoneIntensityValueMatrix[i].length)) * 10000000d) / 10000000d;
-		}
-
-		// calc Z-Value for each discrete acid in every position
-		for (int i = 0; i < chain.backBoneIntensityValueMatrix.length; i++) {
-			for (int j = 0; j < chain.backBoneIntensityValueMatrix[i].length; j++) {
-
-				Double tmpScore = (double) Math.round(
-						(((chain.backBoneIntensityValueMatrix[i][j]) - chain.allMedian[i]) / tempStD[i]) * 10000000d) / 10000000d;
-				if (tempStD[i] < (0.000009d)) {
-					chain.allZvalueMatrix[i][j] = 0.0d;
-				} else {
-
-					if (tmpScore.isNaN()) {
-						tmpScore = 0.0;
-					}
-					// add score to original acid score only if right position
-					if (chain.originalPositions[j] == i) {
-						chain.backBoneZvalue[j] = tmpScore;
-					}
-					// add all scores to the allZvalueMatrix.
-					chain.backBoneZvalueMatrix[i][j] = tmpScore;
-
-				}
-			}
-		}
-
-		// calc tempAvg per column in the intensity value matrix ( avarage of scores per amino acid in every pos)
-
-		tempAvg = new double[20];
-		tempStD = new double[20];
+//
+//		//*************************************
+//		// redo all for backbone, just in case.
+//		//*************************************
+//
+//
+//		for (int i = 0; i < chain.backBoneIntensityValueMatrix.length; i++) {
+//			for (int j = 0; j < chain.backBoneIntensityValueMatrix[i].length; j++) {
+//				tempAvg[i] += chain.backBoneIntensityValueMatrix[i][j];
+//			}
+//			tempAvg[i] = tempAvg[i] / chain.backBoneIntensityValueMatrix[i].length;
+//
+//			//calc standard deviation for each column
+//			for (int j = 0; j < chain.backBoneIntensityValueMatrix[i].length; j++) {
+//				tempStD[i] += ((chain.backBoneIntensityValueMatrix[i][j] - tempAvg[i]) * (chain.backBoneIntensityValueMatrix[i][j] - tempAvg[i]));
+//			}
+//
+//			tempStD[i] = (double) Math.round((Math.sqrt(tempStD[i] / chain.backBoneIntensityValueMatrix[i].length)) * 10000000d) / 10000000d;
+//		}
+//
+//		// calc Z-Value for each discrete acid in every position
+//		for (int i = 0; i < chain.backBoneIntensityValueMatrix.length; i++) {
+//			for (int j = 0; j < chain.backBoneIntensityValueMatrix[i].length; j++) {
+//
+//				Double tmpScore = (double) Math.round(
+//						(((chain.backBoneIntensityValueMatrix[i][j]) - chain.backBoneMedian[i]) / tempStD[i]) * 10000000d) / 10000000d;
+//				if (tempStD[i] < (0.000009d)) {
+//					chain.backBoneZvalueMatrix[i][j] = 0.0d;
+//				} else {
+//
+//					if (tmpScore.isNaN()) {
+//						tmpScore = 0.0;
+//					}
+//					// add score to original acid score only if right position
+//					if (chain.originalPositions[j] == i) {
+//						chain.backBoneZvalue[j] = tmpScore;
+//					}
+//					// add all scores to the allZvalueMatrix.
+//					chain.backBoneZvalueMatrix[i][j] = tmpScore;
+//
+//				}
+//			}
+//		}
+//
+//		// calc tempAvg per column in the intensity value matrix ( avarage of scores per amino acid in every pos)
+//
+//		tempAvg = new double[20];
+//		tempStD = new double[20];
 
 		// calc tempAvg per column in the intensity value matrix ( avarage of scores per amino acid in every pos)
 		for (int i = 0; i < chain.resIntensityValueMatrix.length; i++) {
 			for (int j = 0; j < chain.resIntensityValueMatrix[i].length; j++) {
-				tempAvg[i] += chain.resIntensityValueMatrix[i][j];
+				tempAvg[i] += chain.resIntensityValueMatrix[i][j]+(chain.backBoneIntensityValueMatrix[i][j] * weight);
 			}
 			tempAvg[i] = tempAvg[i] / chain.resIntensityValueMatrix[i].length;
 
 			//calc standard deviation for each column
 			for (int j = 0; j < chain.resIntensityValueMatrix[i].length; j++) {
-				tempStD[i] += ((chain.resIntensityValueMatrix[i][j] - tempAvg[i]) * (chain.resIntensityValueMatrix[i][j] - tempAvg[i]));
+				double tmpResScore = chain.resIntensityValueMatrix[i][j]+(chain.backBoneIntensityValueMatrix[i][j] * weight);
+				tempStD[i] += ((tmpResScore - tempAvg[i]) * (tmpResScore - tempAvg[i]));
 			}
 			tempStD[i] = (double) Math.round((Math.sqrt(tempStD[i] / chain.resIntensityValueMatrix[i].length)) * 10000000d) / 10000000d;
 		}
@@ -515,12 +528,12 @@ public class MRC_Score {
 		// calc Z-Value for each discrete acid in every position
 		for (int i = 0; i < chain.resIntensityValueMatrix.length; i++) {
 			for (int j = 0; j < chain.resIntensityValueMatrix[i].length; j++) {
-
+				double tmpResScore = chain.resIntensityValueMatrix[i][j]+(chain.backBoneIntensityValueMatrix[i][j] * weight);
 				if (tempStD[i] < (0.000009d)) {
 					chain.allZvalueMatrix[i][j] = 0.0d;
 				} else {
 					Double tmpScore = (double) Math.round(
-							(((chain.resIntensityValueMatrix[i][j]) - chain.allMedian[i]) / tempStD[i]) * 10000000d) / 10000000d;
+							((tmpResScore - chain.allMedian[i]) / tempStD[i]) * 10000000d) / 10000000d;
 					if (tmpScore.isNaN()) {
 						tmpScore = 0.0;
 					}
@@ -538,103 +551,103 @@ public class MRC_Score {
 
 	}
 
-	/**
-	 * calc zValue with backbone weighting or addition (temp method).
-	 *
-	 * @param chain
-	 */
+//	/**
+//	 * calc zValue with backbone weighting or addition (temp method).
+//	 *
+//	 * @param chain
+//	 */
 
-	private void zValueHelperWithBackBone(SimpleProtein.ProtChain chain) {
-		double tempAvg[] = new double[20];
-		double tempStD[] = new double[20];
-		chain.allZvalueMatrix = new double[chain.resIntensityValueMatrix.length][chain.resIntensityValueMatrix[0]
-				.length];
-		chain.backBoneZvalueMatrix = new double[chain.resIntensityValueMatrix.length][chain.resIntensityValueMatrix[0]
-				.length];
-
-		//*************************************
-		//       for backbone atoms.
-		//*************************************
-
-		/*
-		calc avarage and std deviation per column (AA type).
-		 */
-		for (int i = 0; i < chain.backBoneIntensityValueMatrix.length; i++) {
-			for (int j = 0; j < chain.backBoneIntensityValueMatrix[i].length; j++) {
-				tempAvg[i] += chain.backBoneIntensityValueMatrix[i][j];
-			}
-			tempAvg[i] = tempAvg[i] / chain.backBoneIntensityValueMatrix[i].length;
-
-			//calc standard deviation for each column
-			for (int j = 0; j < chain.backBoneIntensityValueMatrix[i].length; j++) {
-				tempStD[i] += Math.pow(chain.backBoneIntensityValueMatrix[i][j] - tempAvg[i], 2);
-			}
-			tempStD[i] = Math.sqrt(tempStD[i] / chain.backBoneIntensityValueMatrix[i].length);
-		}
-
-		// calc Z-Value for each discrete acid in every position
-		for (int i = 0; i < chain.backBoneIntensityValueMatrix.length; i++) {
-			for (int j = 0; j < chain.backBoneIntensityValueMatrix[i].length; j++) {
-
-				Double tmpScore = (chain.backBoneIntensityValueMatrix[i][j] - tempAvg[i]) / tempStD[i];
-				if (tmpScore.isNaN()) {
-					tmpScore = 0.0;
-				}
-				// add score to original acid score only if right position
-				if (chain.originalPositions[j] == i) {
-					chain.backBoneZvalue[j] = tmpScore;
-				}
-				// add all scores to the allZvalueMatrix.
-				chain.backBoneZvalueMatrix[i][j] = tmpScore;
-
-			}
-		}
-
-
-		//*************************************
-		//       for residue atoms.
-		//*************************************
-
-		tempAvg = new double[20];
-		tempStD = new double[20];
-		for (int i = 0; i < chain.resIntensityValueMatrix.length; i++) {
-			for (int j = 0; j < chain.resIntensityValueMatrix[i].length; j++) {
-
-
-				// weight the intensity value by multiplying with BB intensity value.
-				//				chain.resIntensityValueMatrix[i][j] *= chain.backBoneIntensityValueMatrix[i][j];
-
-				tempAvg[i] += (chain.resIntensityValueMatrix[i][j]);
-			}
-			tempAvg[i] = tempAvg[i] / chain.resIntensityValueMatrix[i].length;
-
-			//calc standard deviation for each column
-			for (int j = 0; j < chain.resIntensityValueMatrix[i].length; j++) {
-				tempStD[i] += Math.pow((chain.resIntensityValueMatrix[i][j]) - tempAvg[i], 2);
-			}
-			tempStD[i] = Math.sqrt(tempStD[i] / chain.resIntensityValueMatrix[i].length);
-		}
-
-		// calc Z-Value for each discrete acid in every position
-		for (int i = 0; i < chain.resIntensityValueMatrix.length; i++) {
-			for (int j = 0; j < chain.resIntensityValueMatrix[i].length; j++) {
-
-				Double tmpScore = ((chain.resIntensityValueMatrix[i][j]) -
-						tempAvg[i]) / tempStD[i];
-				if (tmpScore.isNaN()) {
-					tmpScore = 0.0;
-				}
-				// add score to original acid score only if right position
-				if (chain.originalPositions[j] == i) {
-					chain.trueZvalues[j] = tmpScore;
-				}
-				chain.allZvalueMatrix[i][j] = tmpScore;
-
-			}
-		}
-
-
-	}
+//	private void zValueHelperWithBackBone(SimpleProtein.ProtChain chain) {
+//		double tempAvg[] = new double[20];
+//		double tempStD[] = new double[20];
+//		chain.allZvalueMatrix = new double[chain.resIntensityValueMatrix.length][chain.resIntensityValueMatrix[0]
+//				.length];
+//		chain.backBoneZvalueMatrix = new double[chain.resIntensityValueMatrix.length][chain.resIntensityValueMatrix[0]
+//				.length];
+//
+//		//*************************************
+//		//       for backbone atoms.
+//		//*************************************
+//
+//		/*
+//		calc avarage and std deviation per column (AA type).
+//		 */
+//		for (int i = 0; i < chain.backBoneIntensityValueMatrix.length; i++) {
+//			for (int j = 0; j < chain.backBoneIntensityValueMatrix[i].length; j++) {
+//				tempAvg[i] += chain.backBoneIntensityValueMatrix[i][j];
+//			}
+//			tempAvg[i] = tempAvg[i] / chain.backBoneIntensityValueMatrix[i].length;
+//
+//			//calc standard deviation for each column
+//			for (int j = 0; j < chain.backBoneIntensityValueMatrix[i].length; j++) {
+//				tempStD[i] += Math.pow(chain.backBoneIntensityValueMatrix[i][j] - tempAvg[i], 2);
+//			}
+//			tempStD[i] = Math.sqrt(tempStD[i] / chain.backBoneIntensityValueMatrix[i].length);
+//		}
+//
+//		// calc Z-Value for each discrete acid in every position
+//		for (int i = 0; i < chain.backBoneIntensityValueMatrix.length; i++) {
+//			for (int j = 0; j < chain.backBoneIntensityValueMatrix[i].length; j++) {
+//
+//				Double tmpScore = (chain.backBoneIntensityValueMatrix[i][j] - tempAvg[i]) / tempStD[i];
+//				if (tmpScore.isNaN()) {
+//					tmpScore = 0.0;
+//				}
+//				// add score to original acid score only if right position
+//				if (chain.originalPositions[j] == i) {
+//					chain.backBoneZvalue[j] = tmpScore;
+//				}
+//				// add all scores to the allZvalueMatrix.
+//				chain.backBoneZvalueMatrix[i][j] = tmpScore;
+//
+//			}
+//		}
+//
+//
+//		//*************************************
+//		//       for residue atoms.
+//		//*************************************
+//
+//		tempAvg = new double[20];
+//		tempStD = new double[20];
+//		for (int i = 0; i < chain.resIntensityValueMatrix.length; i++) {
+//			for (int j = 0; j < chain.resIntensityValueMatrix[i].length; j++) {
+//
+//
+//				// weight the intensity value by multiplying with BB intensity value.
+//				//				chain.resIntensityValueMatrix[i][j] *= chain.backBoneIntensityValueMatrix[i][j];
+//
+//				tempAvg[i] += (chain.resIntensityValueMatrix[i][j]);
+//			}
+//			tempAvg[i] = tempAvg[i] / chain.resIntensityValueMatrix[i].length;
+//
+//			//calc standard deviation for each column
+//			for (int j = 0; j < chain.resIntensityValueMatrix[i].length; j++) {
+//				tempStD[i] += Math.pow((chain.resIntensityValueMatrix[i][j]) - tempAvg[i], 2);
+//			}
+//			tempStD[i] = Math.sqrt(tempStD[i] / chain.resIntensityValueMatrix[i].length);
+//		}
+//
+//		// calc Z-Value for each discrete acid in every position
+//		for (int i = 0; i < chain.resIntensityValueMatrix.length; i++) {
+//			for (int j = 0; j < chain.resIntensityValueMatrix[i].length; j++) {
+//
+//				Double tmpScore = ((chain.resIntensityValueMatrix[i][j]) -
+//						tempAvg[i]) / tempStD[i];
+//				if (tmpScore.isNaN()) {
+//					tmpScore = 0.0;
+//				}
+//				// add score to original acid score only if right position
+//				if (chain.originalPositions[j] == i) {
+//					chain.trueZvalues[j] = tmpScore;
+//				}
+//				chain.allZvalueMatrix[i][j] = tmpScore;
+//
+//			}
+//		}
+//
+//
+//	}
 
 	public void createCSVs() throws IOException {
 
@@ -670,11 +683,20 @@ public class MRC_Score {
 		File signalMaybe = new File(tempCSVfolder.getAbsolutePath() + File.separator + upperCaseFileName
 				+ "_" + chain.getChainID() + "_signalMaybe.csv");
 
-		File combinedMatrix = new File(tempCSVfolder.getAbsolutePath() + File.separator + upperCaseFileName
+		File combinedMatrixNoVec = new File(tempCSVfolder.getAbsolutePath() + File.separator + upperCaseFileName
 				+ "_" + chain.getChainID() + "_profileNoVec.txt");
+		
+		
 		File combinedMatrixLatestVec = new File(tempCSVfolder.getAbsolutePath() + File.separator + upperCaseFileName
 				+ "_" + chain.getChainID() + "_profileLatestVec.txt");
 
+//		File combinedMatrixLatestVecWeightBB2 = new File(tempCSVfolder.getAbsolutePath() + File.separator + upperCaseFileName
+//				+ "_" + chain.getChainID() + "_profileLatestVec_weightedBB_2.txt");
+//
+//		File combinedMatrixLatestVecWeightBB5 = new File(tempCSVfolder.getAbsolutePath() + File.separator + upperCaseFileName
+//				+ "_" + chain.getChainID() + "_profileLatestVec_weightedBB_5.txt");
+//		File combinedMatrixLatestVecWeightBB10 = new File(tempCSVfolder.getAbsolutePath() + File.separator + upperCaseFileName
+//				+ "_" + chain.getChainID() + "_profileLatestVec_weightedBB_10.txt");
 
 		File zscoreCorrect = new File(
 				tempCSVfolder.getAbsolutePath() + File.separator + upperCaseFileName + "_" + chain
@@ -701,10 +723,13 @@ public class MRC_Score {
 		// generate profile files per vector
 		//			writeNewMatrixFormat(combinedMatrixVec4, chain, ScoringGeneralHelpers.vector4);
 		//			writeNewMatrixFormat(combinedMatrixVec3, chain, ScoringGeneralHelpers.vector3);
+		writeNewMatrixFormat(combinedMatrixLatestVec, chain, ScoringGeneralHelpers.latestVector, 0);
+		writeNewMatrixFormat(combinedMatrixLatestVec, chain, ScoringGeneralHelpers.latestVector, 1);
 		writeNewMatrixFormat(combinedMatrixLatestVec, chain, ScoringGeneralHelpers.latestVector, 2);
 		writeNewMatrixFormat(combinedMatrixLatestVec, chain, ScoringGeneralHelpers.latestVector, 5);
 		writeNewMatrixFormat(combinedMatrixLatestVec, chain, ScoringGeneralHelpers.latestVector, 10);
-		//			writeNewMatrixFormat(combinedMatrix, chain, ScoringGeneralHelpers.normalVector);
+		writeNewMatrixFormat(combinedMatrixNoVec, chain, ScoringGeneralHelpers.normalVector, 0);
+		writeNewMatrixFormat(combinedMatrixNoVec, chain, ScoringGeneralHelpers.normalVector, 1);
 
 		writeMatrixToCSV(resultCSV, chain.resIntensityValueMatrix);
 		writeMatrixToCSV(backBoneIntMatrix, chain.backBoneIntensityValueMatrix);
@@ -734,6 +759,7 @@ public class MRC_Score {
 	private void writeNewMatrixFormat(File outputCSV, SimpleProtein.ProtChain chain, double[] vector, int weight)
 			throws
 			IOException {
+		calcZvalue(0);
 
 		double[][] zvaltemp = new double[chain.allZvalueMatrix.length][chain.allZvalueMatrix[0].length];
 		for (int i = 0; i < zvaltemp.length; i++) {
@@ -741,10 +767,11 @@ public class MRC_Score {
 				zvaltemp[i][j] = chain.allZvalueMatrix[i][j];
 			}
 		}
+		
 
 
 		ScoringGeneralHelpers.multiplyMatrixByVector(zvaltemp, vector);
-
+		
 		FileWriter FW = new FileWriter(outputCSV);
 		for (int i = 0; i < zvaltemp[0].length; i++) {
 			String row = "";
@@ -753,20 +780,30 @@ public class MRC_Score {
 			for (int j = 0; j < chain.allZvalueMatrix.length; j++) {
 				row += (zvaltemp[j][i]) + "\t";
 			}
-
+			
 			row += "\n";
 			FW.write(row);
 		}
 		FW.close();
-
+		
+		calcZvalue(weight);
+		zvaltemp = new double[chain.allZvalueMatrix.length][chain.allZvalueMatrix[0].length];
+		for (int i = 0; i < zvaltemp.length; i++) {
+			for (int j = 0; j < zvaltemp[0].length; j++) {
+				zvaltemp[i][j] = chain.allZvalueMatrix[i][j];
+			}
+		}
+		
+		ScoringGeneralHelpers.multiplyMatrixByVector(zvaltemp, vector);
+		
 		FileWriter FWWBB = new FileWriter(new File(outputCSV.getAbsolutePath().replace(".txt", "_weightedBB_" + weight + ".txt")));
 
 		for (int i = 0; i < zvaltemp[0].length; i++) {
 			String row = "";
 			row += chain.getAcidSequenceID(i) + "\t";
 			row += chain.originalPositions[i] + "\t";
-			for (int j = 0; j < chain.allZvalueMatrix.length; j++) {
-				row += ((zvaltemp[j][i]) * (1 + (chain.backBoneZvalueMatrix[j][i] / weight))) + "\t";
+			for (int j = 0; j < zvaltemp.length; j++) {
+				row += (zvaltemp[j][i]) + "\t";
 			}
 
 			row += "\n";

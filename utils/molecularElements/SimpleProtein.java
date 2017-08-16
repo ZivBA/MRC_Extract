@@ -59,7 +59,6 @@ public class SimpleProtein implements Iterable<SimpleProtein.ProtChain> {
 	 */
 	private void constHelper(File pdbFile) throws IOException {
 		source = pdbFile;
-		SCWRLactions.scwrlRunOnce(pdbFile,pdbFile);
 		fileName = pdbFile.getName().substring(0, pdbFile.getName().indexOf(PDB_EXTENSION));
 
 		protChains = new ArrayList<>();
@@ -83,9 +82,9 @@ public class SimpleProtein implements Iterable<SimpleProtein.ProtChain> {
 
 				// only process the requested chain if applicable. if requested chain is null, process all.
 				try {
-					if (requestedChain == '\0' ^ requestedChain == lineInFile.charAt(CHAIN_ID)) {
-						chains.get(chainCounter).add(lineInFile);
-					}
+				
+					chains.get(chainCounter).add(lineInFile);
+					
 				} catch (StringIndexOutOfBoundsException e) {
 					System.out.println("string index OOB exception at line:\n" + lineInFile);
 					System.out.println("from file: " + pdbFile.getName());
@@ -266,7 +265,8 @@ public class SimpleProtein implements Iterable<SimpleProtein.ProtChain> {
 
 		private List<AminoAcid> residues = new ArrayList<>();
 		public double[] allMedian;
-
+		public double[] backBoneMedian;
+		
 		/**
 		 * constructor creating a chain from a list of strings (assume all strings are for a single chain)
 		 *

@@ -1,5 +1,6 @@
 package utils.molecularElements;
 
+import meshi.molecularElements.Atom;
 import utils.ScoreUtilities.ScoringGeneralHelpers;
 
 import java.util.Arrays;
@@ -18,6 +19,7 @@ public class AminoAcid implements Iterable<SimpleAtom>{
 	private int seqNum;
 	private int position;
 	private double acidScore;
+	private SimpleAtom cAlpha;
 
 	/**
 	 * constructor for AminoAcid object, gets a string list (such as from PDB file).
@@ -29,6 +31,9 @@ public class AminoAcid implements Iterable<SimpleAtom>{
 
 		for (int i = 0; i < listOfAtoms.size(); i++) {
 			atoms[i] = new SimpleAtom(listOfAtoms.get(i));
+			if (atoms[i].name.matches("\\s*(CA)\\s*")){
+				cAlpha = atoms[i];
+			}
 		}
 		name = atoms[0].getaAcidName();
 		singleLetterName = ProteinActions.resToSingleLetter(name);
@@ -106,5 +111,9 @@ public class AminoAcid implements Iterable<SimpleAtom>{
 
 	public char getSingleLetter() {
 		return singleLetterName;
+	}
+	
+	public SimpleAtom getCalpha() {
+		return cAlpha;
 	}
 }

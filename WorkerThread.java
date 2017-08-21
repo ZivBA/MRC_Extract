@@ -41,7 +41,7 @@ public class WorkerThread implements Runnable {
 //					System.out.println("Scoring Protein");
 					myScore.scoreProtein();
 //					System.out.println("Running calculations");
-//					myScore.calcZvalue();
+					myScore.calcZvalue();
 //					System.out.println("Writing CSVs");
 					myScore.createCSVs();
 //					System.out.println("Done with: " + args[0] + " chain: " + myScore.requestedChain);
@@ -61,16 +61,29 @@ public class WorkerThread implements Runnable {
 					
 
 					String seqListPath = myScore.getMyProt().getSource().getParent() +File.separator + filePrefix + ".fasta";
-					String profileNoVec = folderPath + filePrefix + "_profileNoVec_weightedBB_1.txt";
-					String profileLatestVec = folderPath + filePrefix + "_profileLatestVec_weightedBB_1.txt";
-					String profileWeight2 = folderPath + filePrefix + "_profileLatestVec_weightedBB_2.txt";
-					String profileWeight5 = folderPath + filePrefix + "_profileLatestVec_weightedBB_5.txt";
-					String profileWeight10 = folderPath + filePrefix + "_profileLatestVec_weightedBB_10.txt";
+					String profileNoVec0 = folderPath + filePrefix + "_profileNoVec_weightedBB_0.0.txt";
+					String profileNoVec01 = folderPath + filePrefix + "_profileNoVec_weightedBB_0.1.txt";
+					String profileNoVec2 = folderPath + filePrefix + "_profileNoVec_weightedBB_0.2.txt";
+					String profileNoVec5 = folderPath + filePrefix + "_profileNoVec_weightedBB_0.5.txt";
+					String profileNoVec7 = folderPath + filePrefix + "_profileNoVec_weightedBB_0.7.txt";
+					String profileNoVec1 = folderPath + filePrefix + "_profileNoVec_weightedBB_1.0.txt";
+					String profileLatestVec0 = folderPath + filePrefix + "_profileLatestVec_weightedBB_0.0.txt";
+					String profileLatestVec = folderPath + filePrefix + "_profileLatestVec_weightedBB_1.0.txt";
+					String profileWeight2 = folderPath + filePrefix + "_profileLatestVec_weightedBB_0.2.txt";
+					String profileWeight5 = folderPath + filePrefix + "_profileLatestVec_weightedBB_0.5.txt";
+					String profileWeight10 = folderPath + filePrefix + "_profileLatestVec_weightedBB_0.7.txt";
 
 					// first arg = null and not swissProtPath if we want to just score against ref FASTA
 //					System.out.println("Running Alignment");
-					RvalAlignerCluster.runThread(null, seqListPath, profileNoVec);
+					RvalAlignerCluster.runThread(null, seqListPath, profileNoVec0);
+					RvalAlignerCluster.runThread(null, seqListPath, profileNoVec01);
+					RvalAlignerCluster.runThread(null, seqListPath, profileNoVec2);
+					RvalAlignerCluster.runThread(null, seqListPath, profileNoVec5);
+					RvalAlignerCluster.runThread(null, seqListPath, profileNoVec7);
+					RvalAlignerCluster.runThread(null, seqListPath, profileNoVec1);
 					RvalAlignerCluster.runThread(null, seqListPath, profileLatestVec);
+					RvalAlignerCluster.runThread(null, seqListPath, profileLatestVec0);
+//					RvalAlignerCluster.runThread(swissProtPath, seqListPath, profileLatestVec);
 					RvalAlignerCluster.runThread(null, seqListPath, profileWeight2);
 					RvalAlignerCluster.runThread(null, seqListPath, profileWeight5);
 					RvalAlignerCluster.runThread(null, seqListPath, profileWeight10);

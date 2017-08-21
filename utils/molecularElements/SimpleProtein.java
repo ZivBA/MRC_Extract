@@ -1,8 +1,5 @@
 package utils.molecularElements;
 
-import utils.ScoreUtilities.ScoringGeneralHelpers;
-import utils.scwrlIntegration.SCWRLactions;
-
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -253,7 +250,7 @@ public class SimpleProtein implements Iterable<SimpleProtein.ProtChain> {
 		public double[][] allZvalueMatrix;          // ZScore values for all iterations
 		public double[] trueZvalues;                // zvalues of the residues in the original protein
 		public double[][] backBoneZvalueMatrix;     // ZValues for BB atoms
-		public double[] backBoneZvalue;             // zvalues of the BB atoms in the original protein
+		public double[] BBTrueZvalue;             // zvalues of the BB atoms in the original protein
 
 		public Integer[] originalPositions;         // acid ID of the original AAcids in the protein
 
@@ -305,7 +302,7 @@ public class SimpleProtein implements Iterable<SimpleProtein.ProtChain> {
 			trueZvalues = new double[residues.size()];
 			//intensity values and z values for backbone
 			backBoneIntensityValueMatrix = new double[20][residues.size()];
-			backBoneZvalue = new double[residues.size()];
+			BBTrueZvalue = new double[residues.size()];
 
 			Collections.sort(residues, new ResidueComparator());
 			for (int i = 0; i < residues.size(); i++) {

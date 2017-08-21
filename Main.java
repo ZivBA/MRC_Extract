@@ -45,8 +45,8 @@ public class Main {
 		}
 		Path inputChainList = (new File(args[0])).toPath();
 		// create new executor service with a threadpool of the required size.
-//		ExecutorService executor = Executors.newFixedThreadPool(cores);
-		ExecutorService executor = Executors.newFixedThreadPool(4);
+		ExecutorService executor = Executors.newFixedThreadPool(cores);
+//		ExecutorService executor = Executors.newFixedThreadPool(6);
 
 
 		try {

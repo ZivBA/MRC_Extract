@@ -729,16 +729,16 @@ public class MRC_Score {
 		//			writeNewMatrixFormat(combinedMatrixVec4, chain, ScoringGeneralHelpers.vector4);
 		//			writeNewMatrixFormat(combinedMatrixVec3, chain, ScoringGeneralHelpers.vector3);
 		writeNewMatrixFormat(combinedMatrixLatestVec, chain, ScoringGeneralHelpers.latestVector, 0);
-		writeNewMatrixFormat(combinedMatrixLatestVec, chain, ScoringGeneralHelpers.latestVector, 0.1);
-		writeNewMatrixFormat(combinedMatrixLatestVec, chain, ScoringGeneralHelpers.latestVector, 0.2);
-		writeNewMatrixFormat(combinedMatrixLatestVec, chain, ScoringGeneralHelpers.latestVector, 0.5);
-		writeNewMatrixFormat(combinedMatrixLatestVec, chain, ScoringGeneralHelpers.latestVector, 0.7);
+		writeNewMatrixFormat(combinedMatrixLatestVec, chain, ScoringGeneralHelpers.latestVector, 12);
+		writeNewMatrixFormat(combinedMatrixLatestVec, chain, ScoringGeneralHelpers.latestVector, 8);
+		writeNewMatrixFormat(combinedMatrixLatestVec, chain, ScoringGeneralHelpers.latestVector, 4);
+		writeNewMatrixFormat(combinedMatrixLatestVec, chain, ScoringGeneralHelpers.latestVector, 2);
 		writeNewMatrixFormat(combinedMatrixLatestVec, chain, ScoringGeneralHelpers.latestVector, 1);
 		writeNewMatrixFormat(combinedMatrixNoVec, chain, ScoringGeneralHelpers.normalVector, 0);
-		writeNewMatrixFormat(combinedMatrixNoVec, chain, ScoringGeneralHelpers.normalVector, 0.1);
-		writeNewMatrixFormat(combinedMatrixNoVec, chain, ScoringGeneralHelpers.normalVector, 0.2);
-		writeNewMatrixFormat(combinedMatrixNoVec, chain, ScoringGeneralHelpers.normalVector, 0.5);
-		writeNewMatrixFormat(combinedMatrixNoVec, chain, ScoringGeneralHelpers.normalVector, 0.7);
+		writeNewMatrixFormat(combinedMatrixNoVec, chain, ScoringGeneralHelpers.normalVector, 12);
+		writeNewMatrixFormat(combinedMatrixNoVec, chain, ScoringGeneralHelpers.normalVector, 8);
+		writeNewMatrixFormat(combinedMatrixNoVec, chain, ScoringGeneralHelpers.normalVector, 4);
+		writeNewMatrixFormat(combinedMatrixNoVec, chain, ScoringGeneralHelpers.normalVector, 2);
 		writeNewMatrixFormat(combinedMatrixNoVec, chain, ScoringGeneralHelpers.normalVector, 1);
 
 		writeMatrixToCSV(resultCSV, chain.resIntensityValueMatrix);

@@ -61,17 +61,17 @@ public class WorkerThread implements Runnable {
 					
 
 					String seqListPath = myScore.getMyProt().getSource().getParent() +File.separator + filePrefix + ".fasta";
-					String profileNoVec0 = folderPath + filePrefix + "_profileNoVec_weightedBB_0.0.txt";
-					String profileNoVec01 = folderPath + filePrefix + "_profileNoVec_weightedBB_0.1.txt";
-					String profileNoVec2 = folderPath + filePrefix + "_profileNoVec_weightedBB_0.2.txt";
-					String profileNoVec5 = folderPath + filePrefix + "_profileNoVec_weightedBB_0.5.txt";
+					String profileNoVec0 = folderPath + filePrefix + "_profileNoVec_weightedBB_2.0.txt";
+					String profileNoVec01 = folderPath + filePrefix + "_profileNoVec_weightedBB_4.0.txt";
+					String profileNoVec2 = folderPath + filePrefix + "_profileNoVec_weightedBB_8.0.txt";
+					String profileNoVec5 = folderPath + filePrefix + "_profileNoVec_weightedBB_12.0.txt";
 					String profileNoVec7 = folderPath + filePrefix + "_profileNoVec_weightedBB_0.7.txt";
 					String profileNoVec1 = folderPath + filePrefix + "_profileNoVec_weightedBB_1.0.txt";
-					String profileLatestVec0 = folderPath + filePrefix + "_profileLatestVec_weightedBB_0.0.txt";
+					String profileLatestVec0 = folderPath + filePrefix + "_profileLatestVec_weightedBB_2.0.txt";
 					String profileLatestVec = folderPath + filePrefix + "_profileLatestVec_weightedBB_1.0.txt";
-					String profileWeight2 = folderPath + filePrefix + "_profileLatestVec_weightedBB_0.2.txt";
-					String profileWeight5 = folderPath + filePrefix + "_profileLatestVec_weightedBB_0.5.txt";
-					String profileWeight10 = folderPath + filePrefix + "_profileLatestVec_weightedBB_0.7.txt";
+					String profileWeight2 = folderPath + filePrefix + "_profileLatestVec_weightedBB_4.0.txt";
+					String profileWeight5 = folderPath + filePrefix + "_profileLatestVec_weightedBB_8.0.txt";
+					String profileWeight10 = folderPath + filePrefix + "_profileLatestVec_weightedBB_12.0.txt";
 
 					// first arg = null and not swissProtPath if we want to just score against ref FASTA
 //					System.out.println("Running Alignment");
